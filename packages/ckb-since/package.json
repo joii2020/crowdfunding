@@ -1,0 +1,32 @@
+{
+  "name": "ckb-since",
+  "version": "0.1.0",
+  "description": "ckb since",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write .",
+    "test": "NODE_OPTIONS='--no-warnings' jest",
+    "clean": "rimraf dist/*"
+  },
+  "devDependencies": {
+    "@types/node": "~22.13.8",
+    "@types/jest": "~29.5.14",
+    "ts-jest": "~29.2.6",
+    "jest": "~29.7.0",
+    "@ckb-ccc/core": "^1.11.0",
+    "esbuild": "~0.25.0"
+  },
+  "dependencies": {}
+}
