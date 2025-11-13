@@ -56,7 +56,7 @@ export class ContributionArgs {
   constructor(
     public projectScript: Hex = zeroHash(),
     public deadline: Date = new Date(),
-    public claimScript: Hex = hexFrom(new Uint8Array(33)),
+    public claimScript: Hex = hexFrom(new Uint8Array(33))
   ) { }
 
   toBytes(): Hex {

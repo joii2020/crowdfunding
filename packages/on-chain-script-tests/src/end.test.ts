@@ -115,7 +115,7 @@ async function destroyClaim() {
     claimArgs.setExpirationTime();
     const claimScript = helper.createJsScript(misc.scriptClaim, claimArgs.toBytes());
 
-    const input = helper.resource.mockCell(defLock, claimScript);
+    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(misc.CKBToShannon(200n), 16)));
     const output = Resource.createCellOutput(defLock);
 
     let tx = Transaction.from({
@@ -147,16 +147,20 @@ async function refund() {
 
     let claimArgs = new misc.ClaimArgs();
     claimArgs.deadline = contributionArgs.deadline;
+    claimArgs.backerLockScript = defLock.hash();
     contributionArgs.claimScript = helper.getJsScript(misc.scriptClaim)!;
+    const contributionScript = helper.createJsScript(misc.scriptContribution, contributionArgs.toBytes());
 
     const claimScript = helper.createJsScript(misc.scriptClaim, claimArgs.toBytes());
 
-    const input = helper.resource.mockCell(defLock, claimScript);
-    const output = Resource.createCellOutput(defLock);
+    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(misc.CKBToShannon(200n), 16)));
+    const input_0 = helper.resource.mockCell(contributionScript, undefined, "0x", misc.CKBToShannon(10000n));
+    const output = Resource.createCellOutput(defLock, undefined, misc.CKBToShannon(201n));
 
     let tx = Transaction.from({
         inputs: [
-            input
+            input,
+            input_0,
         ],
         outputs: [
             output

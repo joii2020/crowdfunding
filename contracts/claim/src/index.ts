@@ -62,7 +62,7 @@ function checkProjectCell(args: ClaimArgs): utils.PorjectArgs {
 }
 
 function checkBacker(args: ClaimArgs): bigint {
-  let count = 0n;
+  let total = 0n;
   for (const it of new HighLevel.QueryIter((index, source) => {
     let hash = HighLevel.loadCellLockHash(index, source);
     if (!bytesEq(hash, args.backerLockScript))
@@ -70,58 +70,40 @@ function checkBacker(args: ClaimArgs): bigint {
     return HighLevel.loadCellCapacity(index, source);
   }, bindings.SOURCE_OUTPUT)) {
     if (it != undefined)
-      count += it;
+      total += it;
   }
 
-  if (count == 0n) {
-    throw "Bakcer not found in outputs";
+  if (total == 0n) {
+    throw Error("Bakcer not found in outputs");
   }
-  return count;
+  return total;
 }
 
 function expired(args: ClaimArgs) {
   console.log("Claim Destruction");
   let contributionTotal = 0n;
 
-  for (let index = 0; index < utils.MAX_CELLS; index++) {
-    try {
-      let scriptArgs = HighLevel.loadCellLock(index, bindings.SOURCE_INPUT).args;
-      if (scriptArgs.byteLength < 35)
-        continue;
-      const jsVmArgs = new utils.JsVMArgs(scriptArgs);
+  for (const it of new HighLevel.QueryIter(
+    (index, source) => {
+      let jsVmArgs = utils.JsVMArgs.loadLockJSVmArgs(index, source);
+      if (jsVmArgs == undefined)
+        return undefined;
       if (jsVmArgs.jsArgs.byteLength != utils.ContributionArgs.len())
-        continue;
-
+        return undefined;
       let contributionArgs = new utils.ContributionArgs(jsVmArgs);
       if (!bytesEq(contributionArgs.projectScriptHash, args.projectScriptHash))
-        continue;
-      contributionTotal += HighLevel.loadCellCapacity(index, bindings.SOURCE_INPUT);
-    } catch (err: any) {
-      if (err.errorCode === bindings.INDEX_OUT_OF_BOUND) {
-        return false;
-      } else {
-        throw err;
-      }
-    }
+        return undefined;
+      return HighLevel.loadCellCapacity(index, source);
+    }, bindings.SOURCE_INPUT)
+  ) {
+    if (it == undefined)
+      continue;
+    contributionTotal += it;
   }
 
-  // for (const it of new HighLevel.QueryIter(
-  //   (index, source) => {
-  //     let jsVmArgs = utils.JsVMArgs.loadLockJSVmArgs(index, source);
-  //     if (jsVmArgs == undefined)
-  //       return undefined;
-  //     if (jsVmArgs.jsArgs.byteLength != utils.ContributionArgs.len())
-  //       return undefined;
-  //     let contributionArgs = new utils.ContributionArgs(jsVmArgs);
-  //     if (!bytesEq(contributionArgs.projectScriptHash, args.projectScriptHash))
-  //       return undefined;
-  //     return HighLevel.loadCellCapacity(index, source);
-  //   }, bindings.SOURCE_INPUT)
-  // ) {
-  //   if (it == undefined)
-  //     continue;
-  //   contributionTotal += it;
-  // }
+  if (contributionTotal == 0n) {
+    return;
+  }
 
   let claimTotal = 0n;
   for (let it of new HighLevel.QueryIter(HighLevel.loadCellData, bindings.SOURCE_GROUP_INPUT)) {
@@ -138,7 +120,7 @@ function expired(args: ClaimArgs) {
     claimTotal += it;
   }
   let backerCapacity = checkBacker(args);
-  if (claimTotal < backerCapacity) {
+  if (claimTotal > backerCapacity) {
     throw Error(`The actual number of refunds was too small. need: ${claimTotal}, actual: ${backerCapacity}`);
   }
 }

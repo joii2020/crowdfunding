@@ -119,7 +119,9 @@ export class TxHelper {
   getJsScript(path: string): Hex | undefined {
     let it = this.jsCode.get(path);
     if (it == undefined) {
-      return undefined;
+      const jsCodeCell = this.appendCell(path);
+      this.jsCode.set(path, jsCodeCell);
+      it = jsCodeCell;
     }
     return joinHex(
       hashCkb(it.outputData),
