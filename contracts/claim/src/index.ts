@@ -83,45 +83,45 @@ function expired(args: ClaimArgs) {
   console.log("Claim Destruction");
   let contributionTotal = 0n;
 
-  for (let index = 0; index < utils.MAX_CELLS; index++) {
-    try {
-      let scriptArgs = HighLevel.loadCellLock(index, bindings.SOURCE_INPUT).args;
-      if (scriptArgs.byteLength < 35)
-        continue;
-      const jsVmArgs = new utils.JsVMArgs(scriptArgs);
-      if (jsVmArgs.jsArgs.byteLength != utils.ContributionArgs.len())
-        continue;
-
-      let contributionArgs = new utils.ContributionArgs(jsVmArgs);
-      if (!bytesEq(contributionArgs.projectScriptHash, args.projectScriptHash))
-        continue;
-      contributionTotal += HighLevel.loadCellCapacity(index, bindings.SOURCE_INPUT);
-    } catch (err: any) {
-      if (err.errorCode === bindings.INDEX_OUT_OF_BOUND) {
-        return false;
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  // for (const it of new HighLevel.QueryIter(
-  //   (index, source) => {
-  //     let jsVmArgs = utils.JsVMArgs.loadLockJSVmArgs(index, source);
-  //     if (jsVmArgs == undefined)
-  //       return undefined;
+  // for (let index = 0; index < utils.MAX_CELLS; index++) {
+  //   try {
+  //     let scriptArgs = HighLevel.loadCellLock(index, bindings.SOURCE_INPUT).args;
+  //     if (scriptArgs.byteLength < 35)
+  //       continue;
+  //     const jsVmArgs = new utils.JsVMArgs(scriptArgs);
   //     if (jsVmArgs.jsArgs.byteLength != utils.ContributionArgs.len())
-  //       return undefined;
+  //       continue;
+
   //     let contributionArgs = new utils.ContributionArgs(jsVmArgs);
   //     if (!bytesEq(contributionArgs.projectScriptHash, args.projectScriptHash))
-  //       return undefined;
-  //     return HighLevel.loadCellCapacity(index, source);
-  //   }, bindings.SOURCE_INPUT)
-  // ) {
-  //   if (it == undefined)
-  //     continue;
-  //   contributionTotal += it;
+  //       continue;
+  //     contributionTotal += HighLevel.loadCellCapacity(index, bindings.SOURCE_INPUT);
+  //   } catch (err: any) {
+  //     if (err.errorCode === bindings.INDEX_OUT_OF_BOUND) {
+  //       return false;
+  //     } else {
+  //       throw err;
+  //     }
+  //   }
   // }
+
+  for (const it of new HighLevel.QueryIter(
+    (index, source) => {
+      let jsVmArgs = utils.JsVMArgs.loadLockJSVmArgs(index, source);
+      if (jsVmArgs == undefined)
+        return undefined;
+      if (jsVmArgs.jsArgs.byteLength != utils.ContributionArgs.len())
+        return undefined;
+      let contributionArgs = new utils.ContributionArgs(jsVmArgs);
+      if (!bytesEq(contributionArgs.projectScriptHash, args.projectScriptHash))
+        return undefined;
+      return HighLevel.loadCellCapacity(index, source);
+    }, bindings.SOURCE_INPUT)
+  ) {
+    if (it == undefined)
+      continue;
+    contributionTotal += it;
+  }
 
   let claimTotal = 0n;
   for (let it of new HighLevel.QueryIter(HighLevel.loadCellData, bindings.SOURCE_GROUP_INPUT)) {
