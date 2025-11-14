@@ -1,8 +1,8 @@
 import { hexFrom, Transaction, stringify, numLeToBytes, hashCkb, hashTypeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
 
-import * as misc from "./mock-misc"
-import { TxHelper, generateRandHash, joinHex } from "./mock-tx-helper";
+import * as misc from "./misc.mock"
+import { TxHelper, generateRandHash, joinHex } from "./tx-helper.mock";
 
 
 async function donationSuccess() {

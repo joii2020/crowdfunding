@@ -1,8 +1,8 @@
 import { hexFrom, Transaction, hashCkb, hashTypeToBytes, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
 
-import * as misc from "./mock-misc"
-import { TxHelper, generateRandHash, zeroHash, joinHex } from "./mock-tx-helper";
+import * as misc from "./misc.mock"
+import { TxHelper, generateRandHash, zeroHash, joinHex } from "./tx-helper.mock";
 
 
 async function success() {

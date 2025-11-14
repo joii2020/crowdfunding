@@ -1,8 +1,8 @@
 import { hexFrom, Transaction, Hex, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier } from "ckb-testtool";
 
-import * as misc from "./mock-misc";
-import { TxHelper } from "./mock-tx-helper";
+import * as misc from "./misc.mock";
+import { TxHelper } from "./tx-helper.mock";
 
 async function createSuccess() {
   let helper = new TxHelper();

@@ -2,7 +2,7 @@ import { hexFrom, Hex, numLeToBytes, hashCkb, HashType, hashTypeToBytes } from "
 import { readFileSync } from "fs"
 
 import { Since } from "@ckb-ccc/core";
-import { zeroHash, joinHex } from "./mock-tx-helper";
+import { zeroHash, joinHex } from "./tx-helper.mock";
 
 export const scriptProject = "dist/project.bc";
 export const scriptContribution = "dist/contribution.bc";
