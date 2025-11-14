@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       ckb-testtool:
-        specifier: ~1.0.4
-        version: 1.0.4(typescript@5.8.3)
+        specifier: ~1.0.5
+        version: 1.0.5(typescript@5.8.3)
       prettier:
         specifier: ~3.5.3
         version: 3.5.3
@@ -954,8 +954,8 @@ packages:
   cjs-module-lexer@1.4.3:
     resolution: {integrity: sha512-9z8TZaGM1pfswYeXrUpzPrkx8UnWYdhJclsiYMm6x/w5+nN+8Tf/LnAgfLGQCm59qAOxU8WwHEq2vNwF6i4j+Q==}
 
-  ckb-testtool@1.0.4:
-    resolution: {integrity: sha512-2nb5qfHPl55FK+v0D2w3p9XJ753G4UPkmja4TqtXRMCLuxn3jFvcaT9FO40nUBdlHT2Kcnh+NQ+GJJY4VoCpHA==}
+  ckb-testtool@1.0.5:
+    resolution: {integrity: sha512-DwE7XVbV5N5m7OSp73cMSyHi+V/sOoDT4NbkvLHziNMfnRQ45PTC4DPpVf5h1scKCcsudNW/4WHXddH9lkdzkQ==}
 
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
@@ -2956,7 +2956,7 @@ snapshots:
 
   cjs-module-lexer@1.4.3: {}
 
-  ckb-testtool@1.0.4(typescript@5.8.3):
+  ckb-testtool@1.0.5(typescript@5.8.3):
     dependencies:
       '@ckb-ccc/core': 1.12.2(typescript@5.8.3)
       '@jridgewell/trace-mapping': 0.3.31

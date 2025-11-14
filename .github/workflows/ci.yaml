@@ -30,7 +30,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install
-        run: pnpm i && node ./patch/patch-ckb-js-vm.cjs
+        run: pnpm i
 
       - name: Build
         run: pnpm build
