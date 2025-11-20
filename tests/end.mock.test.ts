@@ -1,9 +1,10 @@
 import { hexFrom, Transaction, hashCkb, hashTypeToBytes, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
+import { CKBToShannon } from "crowdfunding-helper";
 
-import * as misc from "./misc.mock"
-import { TxHelper, generateRandHash, zeroHash, joinHex } from "./tx-helper.mock";
-
+import { TxHelper, generateRandHash } from "./tx-helper.mock";
+import { ProjectArgs, ContributionArgs, ClaimArgs, joinHex } from "crowdfunding-helper"
+import { scriptProject, scriptContribution, scriptClaim } from "./helper"
 
 async function success() {
     let helper = new TxHelper();
@@ -11,45 +12,45 @@ async function success() {
     const userLock = helper.createAlwaySuc("UserLock1");
     const contributionType = helper.createAlwaySuc("contributionType");
 
-    let prjArgs = new misc.ProjectArgs();
+    let prjArgs = new ProjectArgs();
     prjArgs.typeID = generateRandHash();
     prjArgs.creatorLockScriptHash = userLock.hash();
-    prjArgs.goalAmount = misc.CKBToShannon(100n);
+    prjArgs.goalAmount = CKBToShannon(100n);
     prjArgs.contributionType = contributionType.hash();
 
     prjArgs.contributionScript =
         joinHex(
-            hashCkb(helper.appendCell(misc.scriptContribution).outputData),
+            hashCkb(helper.appendCell(scriptContribution).outputData),
             hexFrom(hashTypeToBytes("data2")));
     prjArgs.claimScript =
         joinHex(
-            hashCkb(helper.appendCell(misc.scriptClaim).outputData),
+            hashCkb(helper.appendCell(scriptClaim).outputData),
             hexFrom(hashTypeToBytes("data2")));
 
     const prjLock = helper.createAlwaySuc("Project");
-    const prjScript = helper.createJsScript(misc.scriptProject, prjArgs.toBytes());
+    const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
 
     const input_prj = helper.resource.mockCell(prjLock, prjScript);
 
-    let contributionArgs = new misc.ContributionArgs();
+    let contributionArgs = new ContributionArgs();
     contributionArgs.projectScript = prjScript.hash();
     contributionArgs.deadline = prjArgs.deadline;
-    const contributionScript = helper.createJsScript(misc.scriptContribution, contributionArgs.toBytes());
+    const contributionScript = helper.createJsScript(scriptContribution, contributionArgs.toBytes());
 
     const input_0 =
         helper.resource.mockCell(
-            contributionScript, contributionType, "0x", misc.CKBToShannon(10n));
+            contributionScript, contributionType, "0x", CKBToShannon(10n));
     const input_1 =
         helper.resource.mockCell(
-            contributionScript, contributionType, "0x", misc.CKBToShannon(10n));
+            contributionScript, contributionType, "0x", CKBToShannon(10n));
     const input_2 =
         helper.resource.mockCell(
-            contributionScript, contributionType, "0x", misc.CKBToShannon(40n));
+            contributionScript, contributionType, "0x", CKBToShannon(40n));
     const input_3 =
         helper.resource.mockCell(
-            contributionScript, contributionType, "0x", misc.CKBToShannon(60n));
+            contributionScript, contributionType, "0x", CKBToShannon(60n));
 
-    const output = Resource.createCellOutput(userLock, undefined, misc.CKBToShannon(10n + 10n + 40n + 60n));
+    const output = Resource.createCellOutput(userLock, undefined, CKBToShannon(10n + 10n + 40n + 60n));
 
     let tx = Transaction.from({
         inputs: [
@@ -79,10 +80,10 @@ async function destroyProject() {
 
     const defLock = helper.createAlwaySuc("def");
 
-    let prjArgs = new misc.ProjectArgs();
+    let prjArgs = new ProjectArgs();
     prjArgs.typeID = generateRandHash();
     prjArgs.setExpirationTime();
-    const prjScript = helper.createJsScript(misc.scriptProject, prjArgs.toBytes());
+    const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
 
     const input = helper.resource.mockCell(defLock, prjScript);
     const output = Resource.createCellOutput(defLock);
@@ -111,11 +112,11 @@ async function destroyClaim() {
 
     const defLock = helper.createAlwaySuc("def");
 
-    let claimArgs = new misc.ClaimArgs();
+    let claimArgs = new ClaimArgs();
     claimArgs.setExpirationTime();
-    const claimScript = helper.createJsScript(misc.scriptClaim, claimArgs.toBytes());
+    const claimScript = helper.createJsScript(scriptClaim, claimArgs.toBytes());
 
-    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(misc.CKBToShannon(200n), 16)));
+    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(CKBToShannon(200n), 16)));
     const output = Resource.createCellOutput(defLock);
 
     let tx = Transaction.from({
@@ -142,20 +143,20 @@ async function refund() {
 
     const defLock = helper.createAlwaySuc("def");
 
-    let contributionArgs = new misc.ContributionArgs();
+    let contributionArgs = new ContributionArgs();
     contributionArgs.setExpirationTime();
 
-    let claimArgs = new misc.ClaimArgs();
+    let claimArgs = new ClaimArgs();
     claimArgs.deadline = contributionArgs.deadline;
     claimArgs.backerLockScript = defLock.hash();
-    contributionArgs.claimScript = helper.getJsScript(misc.scriptClaim)!;
-    const contributionScript = helper.createJsScript(misc.scriptContribution, contributionArgs.toBytes());
+    contributionArgs.claimScript = helper.getJsScript(scriptClaim)!;
+    const contributionScript = helper.createJsScript(scriptContribution, contributionArgs.toBytes());
 
-    const claimScript = helper.createJsScript(misc.scriptClaim, claimArgs.toBytes());
+    const claimScript = helper.createJsScript(scriptClaim, claimArgs.toBytes());
 
-    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(misc.CKBToShannon(200n), 16)));
-    const input_0 = helper.resource.mockCell(contributionScript, undefined, "0x", misc.CKBToShannon(10000n));
-    const output = Resource.createCellOutput(defLock, undefined, misc.CKBToShannon(201n));
+    const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(CKBToShannon(200n), 16)));
+    const input_0 = helper.resource.mockCell(contributionScript, undefined, "0x", CKBToShannon(10000n));
+    const output = Resource.createCellOutput(defLock, undefined, CKBToShannon(201n));
 
     let tx = Transaction.from({
         inputs: [

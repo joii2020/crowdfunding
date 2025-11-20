@@ -3,5 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist"
   },
-  "include": ["contracts/*/src/**/*", "tests/**/*", "scripts/**/*"]
+  "include": [
+    "contracts/*/src/**/*",
+    "tests/**/*",
+    "scripts/**/*"
+  ]
 }

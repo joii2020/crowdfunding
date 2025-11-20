@@ -30,7 +30,10 @@ function checkContribution(args: ClaimArgs, prjArgs: PorjectArgs) {
     capacity = HighLevel.loadCellCapacity(index, bindings.SOURCE_OUTPUT);
 
     // Check Type Script
-    const typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_OUTPUT);
+    let typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_OUTPUT);
+    if (typeScriptHash == null) {
+      typeScriptHash = new ArrayBuffer(32);
+    }
     if (!utils.optionBytesEq(typeScriptHash, prjArgs.contributionType)) {
       throw Error(`Contribution Cell Type error, index: ${index}`);
     }

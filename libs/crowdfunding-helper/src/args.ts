@@ -1,0 +1,127 @@
+import { ccc, hexFrom, Hex, numLeToBytes, Since, bytesFrom, numLeFromBytes, } from "@ckb-ccc/core";
+import { zeroHash, joinHex, sinceFromDate } from "./index"
+
+function getExpirationTime(): Date {
+    let d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d;
+}
+
+function newDate(offsetDay: number): Date {
+    let d = new Date();
+    d.setDate(d.getDate() + offsetDay);
+    return d;
+}
+
+function toSince(d: Date | Since): Since {
+    if (d instanceof Since) {
+        return d;
+    } else {
+        return sinceFromDate(d);
+    }
+}
+
+export class ProjectArgs {
+    constructor(
+        public typeID: Hex = zeroHash(),
+        public creatorLockScriptHash: Hex = zeroHash(),
+        public goalAmount: bigint = BigInt(0),
+        public deadline: Date | Since = newDate(100),
+        public contributionScript = hexFrom(new Uint8Array(33)),
+        public claimScript = hexFrom(new Uint8Array(33)),
+        public contributionType: Hex = zeroHash(),
+    ) { }
+
+    static fromBytes(data: Hex | Uint8Array): ProjectArgs {
+        let bin!: Uint8Array;
+        if (data instanceof Uint8Array) {
+            bin = data;
+        } else {
+            bin = bytesFrom(data);
+        }
+        let ret = new ProjectArgs();
+        let offset = 0;
+
+        ret.typeID = hexFrom(bin.slice(offset, offset + 32));
+        offset += 32;
+
+        ret.creatorLockScriptHash = hexFrom(bin.slice(offset, offset + 32));
+        offset += 32;
+
+        ret.goalAmount = numLeFromBytes(bin.slice(offset, offset + 16));
+        offset += 16;
+
+        ret.deadline = Since.fromNum(numLeFromBytes(bin.slice(offset, offset + 8)));
+        offset += 8;
+
+        ret.contributionScript = hexFrom(bin.slice(offset, offset + 33));
+        offset += 33;
+
+        ret.claimScript = hexFrom(bin.slice(offset, offset + 33));
+        offset += 33;
+
+        ret.contributionType = hexFrom(bin.slice(offset, offset + 32));
+
+        return ret;
+    }
+
+    toBytes(): Hex {
+        return joinHex(
+            this.typeID,
+            this.creatorLockScriptHash,
+            hexFrom(numLeToBytes(this.goalAmount, 16)),
+            hexFrom(toSince(this.deadline).toBytes(),),
+            this.contributionScript,
+            this.claimScript,
+            this.contributionType,
+        );
+    }
+
+    setExpirationTime() {
+        this.deadline = getExpirationTime();
+    }
+}
+
+export class ContributionArgs {
+    constructor(
+        public projectScript: Hex = zeroHash(),
+        public deadline: Date | Since = newDate(100),
+        public claimScript: Hex = hexFrom(new Uint8Array(33))
+    ) { }
+
+    toBytes(): Hex {
+        return joinHex(
+            this.projectScript,
+            hexFrom(
+                toSince(this.deadline).toBytes(),
+            ),
+            this.claimScript,
+        );
+    }
+
+    setExpirationTime() {
+        this.deadline = getExpirationTime();
+    }
+}
+
+export class ClaimArgs {
+    constructor(
+        public projectScript: Hex = zeroHash(),
+        public deadline: Date | Since = newDate(100),
+        public backerLockScript: Hex = zeroHash(),
+    ) { }
+
+    toBytes(): Hex {
+        return joinHex(
+            this.projectScript,
+            hexFrom(
+                toSince(this.deadline).toBytes(),
+            ),
+            this.backerLockScript,
+        )
+    }
+
+    setExpirationTime() {
+        this.deadline = getExpirationTime();
+    }
+}

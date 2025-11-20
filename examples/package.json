@@ -1,0 +1,24 @@
+{
+  "name": "crowdfunding-examples",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "all": "pnpm run-simple",
+    "run-simple": "tsx src/simple-crowdfunding.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "packageManager": "pnpm@10.17.1",
+  "devDependencies": {
+    "@types/node": "~22.13.17",
+    "tsx": "^4.20.6",
+    "typescript": "~5.8.3"
+  },
+  "dependencies": {
+    "@ckb-ccc/core": "^1.12.2",
+    "dotenv": "^17.2.3"
+  }
+}

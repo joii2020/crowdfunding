@@ -30,6 +30,9 @@ importers:
       ckb-testtool:
         specifier: 1.0.5
         version: 1.0.5(typescript@5.8.3)
+      crowdfunding-helper:
+        specifier: workspace:*
+        version: link:libs/crowdfunding-helper
       esbuild:
         specifier: ~0.25.8
         version: 0.25.12
@@ -48,6 +51,12 @@ importers:
       typescript:
         specifier: ~5.8.2
         version: 5.8.3
+
+  libs/crowdfunding-helper:
+    dependencies:
+      '@ckb-ccc/core':
+        specifier: 1.12.2
+        version: 1.12.2(typescript@5.8.3)
 
 packages:
 

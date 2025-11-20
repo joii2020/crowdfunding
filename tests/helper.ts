@@ -54,3 +54,7 @@ export const DEVNET_SCRIPTS: Record<string, KnownScriptType> = {
     .script as KnownScriptType,
   [KnownScript.XUdt]: systemScripts.devnet.xudt!.script as KnownScriptType,
 };
+
+export const scriptProject = "dist/project.bc";
+export const scriptContribution = "dist/contribution.bc";
+export const scriptClaim = "dist/claim.bc";

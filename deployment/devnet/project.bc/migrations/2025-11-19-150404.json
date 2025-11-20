@@ -1,0 +1,12 @@
+{
+  "cell_recipes": [
+    {
+      "name": "project.bc",
+      "tx_hash": "0x42df2854a9bddddc4528e45e72726f7c1d9a33fd3b67ddcd1e13f1412d7a2d5d",
+      "index": 0,
+      "occupied_capacity": 3802300000000,
+      "data_hash": "0x810d16dd0c40414947f20a7c84a43adb5855c7ae7fb77dd986f4f0318b4fcb49"
+    }
+  ],
+  "dep_group_recipes": []
+}

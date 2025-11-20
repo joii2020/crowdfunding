@@ -17,6 +17,8 @@ import {
 import { randomBytes } from "node:crypto";
 import * as node_path from "node:path";
 
+import { joinHex, sinceFromDate } from "crowdfunding-helper"
+
 const DEBUG_JS_CODE = false;
 
 export class TxHelper {
@@ -175,13 +177,12 @@ export class TxHelper {
   }
 
   static updateSince(tx: Transaction): Transaction {
-    let now = Date.now();
+    const now = new Date();
+    const nowSince = sinceFromDate(now);
+    const binSince = nowSince.toNum();
+
     for (let i = 0; i < tx.inputs.length; i++) {
-      tx.inputs[i].since = new ccc.Since(
-        "absolute",
-        "timestamp",
-        BigInt(now),
-      ).toNum();
+      tx.inputs[i].since = binSince;
     }
     return tx;
   }
@@ -245,17 +246,6 @@ export class TxHelper {
 
     console.log(`tx info: \n${cells_str}\n\n${tx_str}`)
   }
-}
-
-export function joinHex(a: Hex, b: Hex, ...rest: Hex[]): Hex {
-  let result = a + b.slice(2);
-  for (const h of rest)
-    result += h.slice(2);
-  return hexFrom(result);
-}
-
-export function zeroHash(): Hex {
-  return hexFrom(new Uint8Array(32));
 }
 
 export function generateRandHash(): Hex {

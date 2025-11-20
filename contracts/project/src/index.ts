@@ -31,7 +31,10 @@ function success(args: PorjectArgs) {
       continue;
     if (!contributionArgs.deadline.eq(args.deadline))
       continue;
-    const typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_INPUT);
+    let typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_INPUT);
+    if (typeScriptHash == null) {
+      typeScriptHash = new ArrayBuffer(32);
+    }
     if (!utils.optionBytesEq(typeScriptHash, args.contributionType)) {
       throw Error(`Contribution Cell Type error, index: ${index}`);
     }

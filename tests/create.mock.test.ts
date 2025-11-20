@@ -1,8 +1,9 @@
 import { hexFrom, Transaction, Hex, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier } from "ckb-testtool";
+import { ProjectArgs } from "crowdfunding-helper"
 
-import * as misc from "./misc.mock";
 import { TxHelper } from "./tx-helper.mock";
+import { scriptProject } from "./helper";
 
 async function createSuccess() {
   let helper = new TxHelper();
@@ -11,9 +12,9 @@ async function createSuccess() {
   const input_0 = helper.resource.mockCell(userLock);
 
   const prjLock = helper.createAlwaySuc("Project");
-  let prjArgs = new misc.ProjectArgs();
+  let prjArgs = new ProjectArgs();
   prjArgs.goalAmount = 1000000n;
-  const prjScript = helper.createJsScript(misc.scriptProject, prjArgs.toBytes());
+  const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
 
   const output_0 = Resource.createCellOutput(prjLock, prjScript);
   const output_1 = Resource.createCellOutput(userLock);

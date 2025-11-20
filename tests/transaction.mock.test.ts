@@ -1,49 +1,49 @@
 import { hexFrom, Transaction, stringify, numLeToBytes, hashCkb, hashTypeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
 
-import * as misc from "./misc.mock"
-import { TxHelper, generateRandHash, joinHex } from "./tx-helper.mock";
-
+import { TxHelper, generateRandHash } from "./tx-helper.mock";
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, joinHex } from "crowdfunding-helper"
+import { scriptProject, scriptContribution, scriptClaim } from "./helper"
 
 async function donationSuccess() {
   let helper = new TxHelper();
 
-  const inputCapacity = misc.CKBToShannon(1001n);
+  const inputCapacity = CKBToShannon(1001n);
 
   const userLock1 = helper.createAlwaySuc("UserLock1");
   const input_0 = helper.resource.mockCell(userLock1, undefined, undefined, inputCapacity);
   const contributionType = helper.createAlwaySuc("contributionType");
 
-  let prjArgs = new misc.ProjectArgs();
+  let prjArgs = new ProjectArgs();
   prjArgs.typeID = generateRandHash();
   prjArgs.contributionType = contributionType.hash();
   prjArgs.contributionScript =
     joinHex(
-      hashCkb(helper.appendCell(misc.scriptContribution).outputData),
+      hashCkb(helper.appendCell(scriptContribution).outputData),
       hexFrom(hashTypeToBytes("data2")));
   prjArgs.claimScript =
     joinHex(
-      hashCkb(helper.appendCell(misc.scriptClaim).outputData),
+      hashCkb(helper.appendCell(scriptClaim).outputData),
       hexFrom(hashTypeToBytes("data2")));
 
   const prjLock = helper.createAlwaySuc("Project");
-  const prjScript = helper.createJsScript(misc.scriptProject, prjArgs.toBytes());
+  const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
   const prjDeps = Resource.createCellDep(helper.resource.mockCell(prjLock, prjScript), "code");
 
-  let contributionArgs = new misc.ContributionArgs();
+  let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = prjScript.hash();
   contributionArgs.deadline = prjArgs.deadline;
 
-  let claimArgs = new misc.ClaimArgs()
+  let claimArgs = new ClaimArgs()
   claimArgs.projectScript = prjScript.hash();
   claimArgs.deadline = prjArgs.deadline;
 
-  const outputCapacity = misc.CKBToShannon(1000n);
-  const contributionScript = helper.createJsScript(misc.scriptContribution, contributionArgs.toBytes());
+  const outputCapacity = CKBToShannon(1000n);
+  const contributionScript = helper.createJsScript(scriptContribution, contributionArgs.toBytes());
   const output_0 = Resource.createCellOutput(contributionScript, contributionType, outputCapacity);
 
   const userLock2 = helper.createAlwaySuc("UserLock2");
-  const claimScript = helper.createJsScript(misc.scriptClaim, claimArgs.toBytes());
+  const claimScript = helper.createJsScript(scriptClaim, claimArgs.toBytes());
   const output_1 = Resource.createCellOutput(userLock2, claimScript);
 
   let tx = Transaction.from({
@@ -74,26 +74,26 @@ async function mergeContributionSuccess() {
   const defTypeScript = helper.createAlwaySuc("Def");
   const defScript = helper.createAlwaySuc("Def Script");
 
-  let prjArgs = new misc.ProjectArgs();
+  let prjArgs = new ProjectArgs();
   prjArgs.typeID = generateRandHash();
   prjArgs.contributionType = defTypeScript.hash();
   prjArgs.contributionScript =
     joinHex(
-      hashCkb(helper.appendCell(misc.scriptContribution).outputData),
+      hashCkb(helper.appendCell(scriptContribution).outputData),
       hexFrom(hashTypeToBytes("data2")));
   prjArgs.claimScript =
     joinHex(
-      hashCkb(helper.appendCell(misc.scriptClaim).outputData),
+      hashCkb(helper.appendCell(scriptClaim).outputData),
       hexFrom(hashTypeToBytes("data2")));
 
   const prjLock = helper.createAlwaySuc("Project");
-  const prjScript = helper.createJsScript(misc.scriptProject, prjArgs.toBytes());
+  const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
   const prjDeps = Resource.createCellDep(helper.resource.mockCell(prjLock, prjScript), "code");
 
-  let contributionArgs = new misc.ContributionArgs();
+  let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = prjScript.hash();
   contributionArgs.deadline = prjArgs.deadline;
-  const contributionScript = helper.createJsScript(misc.scriptContribution, contributionArgs.toBytes());
+  const contributionScript = helper.createJsScript(scriptContribution, contributionArgs.toBytes());
 
   const capacity_0 = 100000000n;
   const capacity_1 = 200000000n;
