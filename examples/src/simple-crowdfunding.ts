@@ -11,17 +11,6 @@ import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, shannonToCKB, s
 
 function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
   let prjCodeHash = scripts.devnet["project.bc"].codeHash;
-  let getTypeID = (index: number) => {
-    let input = tx.inputs[index];
-
-    let hasher = new ccc.HasherCkb();
-
-    hasher.update(input.toBytes());
-    hasher.update(ccc.numLeToBytes(index, 8));
-
-    return hasher.digest();
-  };
-
   for (let index = 0; index < tx.inputs.length; index++) {
     const output = tx.outputs[index];
     if (!output || !output.type)
@@ -32,7 +21,8 @@ function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
     if (typeScript.args.slice(6, 32 * 2 + 6) != prjCodeHash.slice(2)) {
       continue;
     }
-    let typeId = getTypeID(index).slice(0);
+
+    let typeId = ccc.hashTypeId(tx.inputs[index], index);
     let srcArgs = typeScript.args.slice(2);
     let args =
       "0x" +
@@ -61,6 +51,8 @@ async function sendTx(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
   await tx.completeInputsByCapacity(signer);
   tx = updateSince(tx);
   tx = updateTypeId(tx);
+
+  tx = await signer.prepareTransaction(tx);
   tx = await setFee(signer, tx);
   console.log(`${ccc.stringify(tx)}`);
   const txHash = await signer.sendTransaction(tx);
@@ -71,7 +63,6 @@ async function sendTx(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
 }
 
 async function setFee(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Promise<ccc.Transaction> {
-  tx = await signer.prepareTransaction(tx);
 
   let feeRate = 1000n;
   try {
@@ -357,8 +348,8 @@ async function projectSuccess(client: ccc.Client, signer: ccc.SignerCkbPrivateKe
 }
 
 async function all(client: ccc.Client, signer: ccc.SignerCkbPrivateKey) {
-  // const projectTxHash = await createProject(client, signer, 2000n);
-  const projectTxHash = "0xa677021904dee049600b2c9d50020192518413878505e2d390be107628327222"
+  const projectTxHash = await createProject(client, signer, 2000n);
+  // const projectTxHash = "0xa677021904dee049600b2c9d50020192518413878505e2d390be107628327222"
   console.log(`Project Tx Hash: ${projectTxHash}`);
 
   // donation
