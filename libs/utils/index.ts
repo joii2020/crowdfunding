@@ -65,8 +65,6 @@ export function getProjectArgs(scritpHash: ArrayBuffer, source: bindings.SourceT
   return undefined;
 }
 
-export const MAX_CELLS = 256;
-
 export function optionBytesEq(a: ArrayBuffer | null, b: ArrayBuffer | null): boolean {
   if (a === null)
     return b === null

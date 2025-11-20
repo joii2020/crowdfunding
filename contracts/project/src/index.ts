@@ -17,50 +17,46 @@ function success(args: PorjectArgs) {
   let totalCapacity = 0n;
 
   let thisScriptHash = HighLevel.loadScriptHash();
-  let iters = new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_INPUT);
-  for (let index = 0; index < utils.MAX_CELLS; index++) {
-    const it = iters.next();
-    if (it.done)
-      break;
+  for (const it of new HighLevel.QueryIter((index, source) => {
+    let lockScript = HighLevel.loadCellLock(index, source);
 
     // Not Contribution (Code Hash)
-    if (!bytesEq(new utils.JsVMArgs(it.value.args).jsScript, args.contributionScript))
-      continue;
-    let contributionArgs = new utils.ContributionArgs(it.value.args);
+    if (!bytesEq(new utils.JsVMArgs(lockScript.args).jsScript, args.contributionScript))
+      return null;
+    let contributionArgs = new utils.ContributionArgs(lockScript.args);
     if (!bytesEq(thisScriptHash, contributionArgs.projectScriptHash))
-      continue;
+      return null;
     if (!contributionArgs.deadline.eq(args.deadline))
-      continue;
-    let typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_INPUT);
+      return null;
+    let typeScriptHash = HighLevel.loadCellTypeHash(index, source);
     if (typeScriptHash == null) {
       typeScriptHash = new ArrayBuffer(32);
     }
     if (!utils.optionBytesEq(typeScriptHash, args.contributionType)) {
       throw Error(`Contribution Cell Type error, index: ${index}`);
     }
-
-    totalCapacity += HighLevel.loadCellCapacity(index, bindings.SOURCE_INPUT);
+    return HighLevel.loadCellCapacity(index, source);
+  }, bindings.SOURCE_INPUT)) {
+    if (it == null)
+      continue;
+    totalCapacity += it;
   }
 
   if (args.goalAmount > totalCapacity) {
     throw Error(`Not enough funds raised, need: ${args.goalAmount}, actual: ${totalCapacity}`);
   }
 
-  let outputIters = new HighLevel.QueryIter(HighLevel.loadCellLockHash, bindings.SOURCE_OUTPUT);
-  for (let index = 0; index < utils.MAX_CELLS; index++) {
-    const it = outputIters.next();
-    if (it.done) {
-      break;
-    }
-    if (!bytesEq(it.value, args.creatorLockScriptHash)) {
-      continue;
-    }
+  for (const it of new HighLevel.QueryIter((index, source) => {
+    let lockHash = HighLevel.loadCellLockHash(index, source);
+    if (!bytesEq(lockHash, args.creatorLockScriptHash))
+      return null;
 
-    let capacity = HighLevel.loadCellCapacity(index, bindings.SOURCE_OUTPUT);
-    if (capacity != totalCapacity) {
+    return HighLevel.loadCellCapacity(index, source);
+  }, bindings.SOURCE_OUTPUT)) {
+    if (it == null)
       continue;
-    }
-    return;
+    if (it == totalCapacity)
+      return;
   }
   throw Error("After success, the funds need to be transferred to the designated account");
 }

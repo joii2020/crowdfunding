@@ -63,7 +63,6 @@ async function sendTx(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
 }
 
 async function setFee(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Promise<ccc.Transaction> {
-
   let feeRate = 1000n;
   try {
     feeRate = await signer.client.getFeeRate();

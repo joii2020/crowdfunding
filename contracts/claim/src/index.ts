@@ -7,36 +7,32 @@ import * as utils from "../../../libs/utils"
 function checkContribution(args: ClaimArgs, prjArgs: PorjectArgs) {
   let capacity = undefined;
 
-  let iters = new HighLevel.QueryIter(HighLevel.loadCellLock, bindings.SOURCE_OUTPUT);
-  for (let index = 0; index < utils.MAX_CELLS; index++) {
-    const it = iters.next();
-    if (it.done)
-      break;
-
-    // Not Contribution (Code Hash)
-    if (!bytesEq(new utils.JsVMArgs(it.value.args).jsScript, prjArgs.contributionScript))
-      continue;
-    let contributionArgs = new utils.ContributionArgs(it.value.args);
-
+  for (const it of new HighLevel.QueryIter((index, source) => {
+    const lockScript = HighLevel.loadCellLock(index, source);
+    if (!bytesEq(new utils.JsVMArgs(lockScript.args).jsScript, prjArgs.contributionScript))
+      return null;
+    let contributionArgs = new utils.ContributionArgs(lockScript.args);
     // Not same Project
     if (!bytesEq(args.projectScriptHash, contributionArgs.projectScriptHash))
-      continue;
+      return null;
     if (!contributionArgs.deadline.eq(prjArgs.deadline))
-      continue;
-
-    if (capacity != undefined) {
-      throw Error("There can contribution (same Project) only be one tx");
-    }
-    capacity = HighLevel.loadCellCapacity(index, bindings.SOURCE_OUTPUT);
-
+      return null;
     // Check Type Script
-    let typeScriptHash = HighLevel.loadCellTypeHash(index, bindings.SOURCE_OUTPUT);
+    let typeScriptHash = HighLevel.loadCellTypeHash(index, source);
     if (typeScriptHash == null) {
       typeScriptHash = new ArrayBuffer(32);
     }
     if (!utils.optionBytesEq(typeScriptHash, prjArgs.contributionType)) {
       throw Error(`Contribution Cell Type error, index: ${index}`);
     }
+    return HighLevel.loadCellCapacity(index, source);
+  }, bindings.SOURCE_OUTPUT)) {
+    if (it == null)
+      continue;
+    if (capacity != undefined) {
+      throw Error("There can contribution (same Project) only be one tx");
+    }
+    capacity = it;
   }
 
   let data = HighLevel.loadCellData(0, bindings.SOURCE_GROUP_OUTPUT);

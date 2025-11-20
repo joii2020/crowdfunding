@@ -44,27 +44,24 @@ function merge(args: ContributionArgs, prjArgs: PorjectArgs) {
   }
 
   let outputCapacity = 0n;
-  for (let i = 0; i < utils.MAX_CELLS; i++) {
-    try {
-      let lockScriptHash = HighLevel.loadCellLockHash(i, bindings.SOURCE_OUTPUT);
-      if (bytesEq(lockScriptHash, thisScriptHash)) {
-        if (outputCapacity != 0n) {
-          throw Error("Merge's output is allowed to exist only once");
-        }
-        outputCapacity = HighLevel.loadCellCapacity(i, bindings.SOURCE_OUTPUT);
+  for (const it of new HighLevel.QueryIter((index, source) => {
+    let lockScriptHash = HighLevel.loadCellLockHash(index, source);
+    if (!bytesEq(lockScriptHash, thisScriptHash))
+      return null;
 
-        let typeScriptHash = HighLevel.loadCellTypeHash(i, bindings.SOURCE_OUTPUT);
-        if (!utils.optionBytesEq(typeScriptHash, thisTypeHash)) {
-          throw Error("Output Type Script error");
-        }
-      }
-    } catch (err: any) {
-      if (err.errorCode === bindings.INDEX_OUT_OF_BOUND) {
-        break;
-      } else {
-        throw err;
-      }
+    let typeScriptHash = HighLevel.loadCellTypeHash(index, source);
+    if (!utils.optionBytesEq(typeScriptHash, thisTypeHash)) {
+      throw Error("Output Type Script error");
     }
+
+    return HighLevel.loadCellCapacity(index, source);
+  }, bindings.SOURCE_OUTPUT)) {
+    if (it == null)
+      continue;
+    if (outputCapacity != 0n) {
+      throw Error("Merge's output is allowed to exist only once");
+    }
+    outputCapacity = it;
   }
 
   if (inputCapacity !== outputCapacity) {
