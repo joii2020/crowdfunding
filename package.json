@@ -7,13 +7,16 @@
   "scripts": {
     "build": "node scripts/build-all.js",
     "build:contract": "node scripts/build-contract.js",
-    "build:libs": "pnpm --filter crowdfunding-helper run build",
-    "test": "node scripts/build-all.js && pnpm build:libs && jest",
+    "build:shared": "pnpm --filter shared run build",
+    "test": "node scripts/build-all.js && pnpm build:shared && jest",
     "add-contract": "node scripts/add-contract.js",
     "deploy": "node scripts/build-all.js && node scripts/deploy.js",
-    "clean": "rimraf dist",
+    "clean": "rimraf artifacts/dist",
     "format": "prettier --write .",
-    "example": "pnpm build:libs && cd examples && pnpm i && pnpm run all"
+    "example": "pnpm build:shared && cd examples && pnpm i && pnpm run all",
+    "app:dev": "cd app && pnpm dev",
+    "app:build": "cd app && pnpm build",
+    "app:start": "cd app && pnpm start"
   },
   "dependencies": {
     "@ckb-js-std/bindings": "~1.0.0",
@@ -21,7 +24,8 @@
     "dotenv": "^17.2.1"
   },
   "devDependencies": {
-    "crowdfunding-helper": "workspace:*",
+    "shared": "workspace:*",
+    "artifacts": "workspace:*",
     "@ckb-ccc/core": "1.12.2",
     "@types/jest": "~29.5.14",
     "@types/node": "~22.13.8",

@@ -3,7 +3,7 @@ name = "contribution.bc"
 enable_type_id = false
 
   [cells.location]
-  file = "/Volumes/workspack/code/ckb/crowdfunding/dist/contribution.bc"
+  file = "/Users/sonny/code/crowdfunding/artifacts/dist/contribution.bc"
 
 [lock]
 code_hash = "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8"

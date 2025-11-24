@@ -2,12 +2,12 @@ import { hexFrom, ccc, hashTypeToBytes, Hex, bytesFrom, numLeToBytes, Cell } fro
 import dotenv from "dotenv";
 import path from "node:path";
 
-import scripts from "../../deployment/scripts.json";
-import systemScript from "../../deployment/system-scripts.json"
-import scriptsPatch from "../../deployment-patch/scripts_patch.json"
+import scripts from "artifacts/deployment/scripts.json";
+import systemScript from "artifacts/deployment/system-scripts.json"
+import scriptsPatch from "artifacts/deployment-patch/scripts_patch.json"
 import { buildClient, buildSigner } from "../../tests/helper";
 
-import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, shannonToCKB, sinceFromDate, } from "crowdfunding-helper"
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, shannonToCKB, sinceFromDate, } from "shared"
 
 function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
   let prjCodeHash = scripts.devnet["project.bc"].codeHash;

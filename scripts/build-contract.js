@@ -12,7 +12,7 @@ function buildContract(contractName) {
 
   const contractDir = path.join('contracts', contractName);
   const srcDir = path.join(contractDir, 'src');
-  const distDir = path.join('dist');
+  const distDir = path.join('artifacts', 'dist');
 
   // Check if contract exists
   if (!fs.existsSync(contractDir)) {

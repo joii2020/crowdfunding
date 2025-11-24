@@ -6,8 +6,8 @@
  * This script deploys all built contracts using the offckb deploy command.
  *
  * Fixed parameters:
- * - target: dist/ (where all built contracts are located)
- * - output: deployment/ (where deployment artifacts are saved)
+ * - target: artifacts/dist/ (where all built contracts are located)
+ * - output: artifacts/deployment/ (where deployment artifacts are saved)
  *
  * Command line arguments accepted:
  * - --network: Network to deploy to (devnet, testnet, mainnet) - defaults to devnet
@@ -51,8 +51,8 @@ function parseArgs() {
 
 function main() {
   // Fixed parameters for the template project
-  const TARGET = 'dist';
-  const OUTPUT = 'deployment';
+  const TARGET = 'artifacts/dist';
+  const OUTPUT = 'artifacts/deployment';
 
   // Parse command line arguments
   const options = parseArgs();
@@ -60,9 +60,9 @@ function main() {
   const PRIVKEY = options.privkey;
   const TYPE_ID = options.typeId;
 
-  // Validate that dist directory exists
+  // Validate that artifacts/dist directory exists
   if (!fs.existsSync(TARGET)) {
-    console.error('❌ Error: dist/ directory not found.');
+    console.error('❌ Error: artifacts/dist/ directory not found.');
     console.error('   Please run "npm run build" first to build your contracts.');
     process.exit(1);
   }
@@ -72,7 +72,7 @@ function main() {
   const bcFiles = distFiles.filter((file) => file.endsWith('.bc'));
 
   if (bcFiles.length === 0) {
-    console.error('❌ Error: No .bc files found in dist/ directory.');
+    console.error('❌ Error: No .bc files found in artifacts/dist/ directory.');
     console.error('   Please run "npm run build" first to build your contracts.');
     process.exit(1);
   }
@@ -122,7 +122,7 @@ function main() {
       console.log(`📁 Deployment artifacts saved to: ${OUTPUT}/`);
       console.log('');
       console.log('💡 Next steps:');
-      console.log('   - Check the deployment artifacts in the deployment/ folder');
+      console.log('   - Check the deployment artifacts in the artifacts/deployment/ folder');
       console.log('   - Run your tests to use the deployed contract scripts');
     } else {
       console.error('');

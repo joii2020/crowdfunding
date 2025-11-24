@@ -1,7 +1,7 @@
 import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, log, logError, numFromBytes, bytesEq } from "@ckb-js-std/core";
-import * as utils from "../../../libs/utils"
-import { PorjectArgs, ScriptStatus } from "../../../libs/utils"
+import * as utils from "../../libs/utils"
+import { PorjectArgs, ScriptStatus } from "../../libs/utils"
 
 function create(args: PorjectArgs) {
   console.log("Create crowdfunding");

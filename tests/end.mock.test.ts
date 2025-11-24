@@ -1,9 +1,9 @@
 import { hexFrom, Transaction, hashCkb, hashTypeToBytes, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
-import { CKBToShannon } from "crowdfunding-helper";
+import { CKBToShannon } from "shared";
 
 import { TxHelper, generateRandHash } from "./tx-helper.mock";
-import { ProjectArgs, ContributionArgs, ClaimArgs, joinHex } from "crowdfunding-helper"
+import { ProjectArgs, ContributionArgs, ClaimArgs, joinHex } from "shared"
 import { scriptProject, scriptContribution, scriptClaim } from "./helper"
 
 async function success() {

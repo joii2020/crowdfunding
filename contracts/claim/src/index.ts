@@ -1,8 +1,8 @@
 import * as bindings from "@ckb-js-std/bindings";
 import { HighLevel, bytesEq, log, logError, numFromBytes } from "@ckb-js-std/core";
 
-import { ClaimArgs, PorjectArgs, ScriptStatus } from "../../../libs/utils"
-import * as utils from "../../../libs/utils"
+import { ClaimArgs, PorjectArgs, ScriptStatus } from "../../libs/utils"
+import * as utils from "../../libs/utils"
 
 function checkContribution(args: ClaimArgs, prjArgs: PorjectArgs) {
   let capacity = undefined;
