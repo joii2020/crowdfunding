@@ -1,0 +1,12 @@
+{
+  "name": "artifacts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deployment artifacts and patches for CKB contracts",
+  "main": "index.js",
+  "exports": {
+    "./deployment/*": "./deployment/*",
+    "./deployment-patch/*": "./deployment-patch/*",
+    "./patch/*": "./patch/*"
+  }
+}

@@ -1,6 +1,6 @@
 import { hexFrom, Transaction, Hex, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier } from "ckb-testtool";
-import { ProjectArgs } from "crowdfunding-helper"
+import { ProjectArgs } from "shared"
 
 import { TxHelper } from "./tx-helper.mock";
 import { scriptProject } from "./helper";

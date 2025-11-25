@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@ckb-ccc/core": "^1.12.2",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "shared": "workspace:*",
+    "artifacts": "workspace:*"
   }
 }

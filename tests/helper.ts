@@ -1,5 +1,5 @@
 import { ccc, CellDepInfoLike, KnownScript, Script } from "@ckb-ccc/core";
-import systemScripts from "../deployment/system-scripts.json";
+import systemScripts from "artifacts/deployment/system-scripts.json";
 import dotenv from "dotenv";
 dotenv.config({ quiet: true });
 
@@ -55,6 +55,6 @@ export const DEVNET_SCRIPTS: Record<string, KnownScriptType> = {
   [KnownScript.XUdt]: systemScripts.devnet.xudt!.script as KnownScriptType,
 };
 
-export const scriptProject = "dist/project.bc";
-export const scriptContribution = "dist/contribution.bc";
-export const scriptClaim = "dist/claim.bc";
+export const scriptProject = "artifacts/dist/project.bc";
+export const scriptContribution = "artifacts/dist/contribution.bc";
+export const scriptClaim = "artifacts/dist/claim.bc";

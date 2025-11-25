@@ -17,7 +17,7 @@ import {
 import { randomBytes } from "node:crypto";
 import * as node_path from "node:path";
 
-import { joinHex, sinceFromDate } from "crowdfunding-helper"
+import { joinHex, sinceFromDate } from "shared"
 
 const DEBUG_JS_CODE = false;
 

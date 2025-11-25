@@ -1,0 +1,12 @@
+{
+  "cell_recipes": [
+    {
+      "name": "claim.bc",
+      "tx_hash": "0x64b348b0ffea4ccf09ba1ff4085c721ceccb629461a39ba22cbb1ad959337ba0",
+      "index": 0,
+      "occupied_capacity": 3923800000000,
+      "data_hash": "0x0b27456dcf7e522397677b9e7efdeb3345216a188d19de5f67c65fe971c0c9dd"
+    }
+  ],
+  "dep_group_recipes": []
+}

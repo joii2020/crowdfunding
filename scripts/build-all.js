@@ -14,7 +14,7 @@ function buildAllContracts() {
 
   const contracts = fs
     .readdirSync(contractsDir, { withFileTypes: true })
-    .filter((dirent) => dirent.isDirectory())
+    .filter((dirent) => dirent.isDirectory() && dirent.name !== 'libs')
     .map((dirent) => dirent.name);
 
   if (contracts.length === 0) {

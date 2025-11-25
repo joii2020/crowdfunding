@@ -2,7 +2,7 @@ import { hexFrom, Transaction, stringify, numLeToBytes, hashCkb, hashTypeToBytes
 import { Resource, Verifier, } from "ckb-testtool";
 
 import { TxHelper, generateRandHash } from "./tx-helper.mock";
-import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, joinHex } from "crowdfunding-helper"
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, joinHex } from "shared"
 import { scriptProject, scriptContribution, scriptClaim } from "./helper"
 
 async function donationSuccess() {

@@ -1,8 +1,8 @@
 import * as bindings from "@ckb-js-std/bindings";
 import { bytesEq, HighLevel, log, logError } from "@ckb-js-std/core";
 
-import { ContributionArgs, PorjectArgs, ScriptStatus } from "../../../libs/utils"
-import * as utils from "../../../libs/utils"
+import { ContributionArgs, PorjectArgs, ScriptStatus } from "../../libs/utils"
+import * as utils from "../../libs/utils"
 
 function success(prjArgs: PorjectArgs) {
   console.log("Crowdfunding Success");

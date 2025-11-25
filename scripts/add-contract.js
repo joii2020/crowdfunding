@@ -116,7 +116,7 @@ describe('${contractName} contract', () => {
 
     const mainScript = resource.deployCell(hexFrom(readFileSync(DEFAULT_SCRIPT_CKB_JS_VM)), tx, false);
     const alwaysSuccessScript = resource.deployCell(hexFrom(readFileSync(DEFAULT_SCRIPT_ALWAYS_SUCCESS)), tx, false);
-    const contractScript = resource.deployCell(hexFrom(readFileSync('dist/${contractName}.bc')), tx, false);
+    const contractScript = resource.deployCell(hexFrom(readFileSync('artifacts/dist/${contractName}.bc')), tx, false);
     
     mainScript.args = hexFrom(
       '0x0000' +
@@ -150,7 +150,7 @@ describe('${contractName} contract', () => {
 
     const mainScript = resource.deployCell(hexFrom(readFileSync(DEFAULT_SCRIPT_CKB_JS_VM)), tx, false);
     const alwaysSuccessScript = resource.deployCell(hexFrom(readFileSync(DEFAULT_SCRIPT_ALWAYS_SUCCESS)), tx, false);
-    const contractScript = resource.deployCell(hexFrom(readFileSync('dist/${contractName}.bc')), tx, false);
+    const contractScript = resource.deployCell(hexFrom(readFileSync('artifacts/dist/${contractName}.bc')), tx, false);
     
     mainScript.args = hexFrom(
       '0x0000' +
@@ -179,8 +179,8 @@ describe('${contractName} contract', () => {
     const devnetTestTemplate =
       language === 'typescript'
         ? `import { hexFrom, ccc, hashTypeToBytes } from "@ckb-ccc/core";
-import scripts from "../deployment/scripts.json";
-import systemScripts from "../deployment/system-scripts.json";
+import scripts from "../artifacts/deployment/scripts.json";
+import systemScripts from "../artifacts/deployment/system-scripts.json";
 import { buildClient, buildSigner } from "./helper";
 
 describe("${contractName} contract", () => {
@@ -235,8 +235,8 @@ describe("${contractName} contract", () => {
   });
 });`
         : `const { hexFrom, ccc, hashTypeToBytes } = require("@ckb-ccc/core");
-const scripts = require("../deployment/scripts.json");
-const systemScripts = require("../deployment/system-scripts.json");
+const scripts = require("../artifacts/deployment/scripts.json");
+const systemScripts = require("../artifacts/deployment/system-scripts.json");
 const { buildClient, buildSigner } = require("./helper");
 
 describe("${contractName} contract", () => {
