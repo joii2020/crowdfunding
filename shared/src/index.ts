@@ -1,6 +1,7 @@
-import { hexFrom, numFrom, Hex, Since } from "@ckb-ccc/core";
+import { ccc, hexFrom, numFrom, Hex, Since } from "@ckb-ccc/core";
 
 export * from "./args"
+export * from "./on_chain"
 
 export function shannonToCKB(amount: bigint) {
     return amount / BigInt(100000000);
@@ -22,7 +23,12 @@ export function zeroHash(): Hex {
 }
 
 export function sinceFromDate(date: Date): Since {
-    const unixMs = BigInt(date.getTime());
+    const ms = date.getTime();
+    if (!Number.isFinite(ms)) {
+        throw new Error("sinceFromDate received an invalid Date");
+    }
+
+    const unixMs = BigInt(Math.trunc(ms));
     const unixSeconds = unixMs / 1000n;
 
     const value = numFrom(unixSeconds);
@@ -33,3 +39,59 @@ export function sinceFromDate(date: Date): Since {
         value,
     );
 }
+
+export function sinceToDate(since: Since): Date {
+    if (since.relative !== "absolute" || since.metric !== "timestamp") {
+        throw new Error("sinceToDate only supports absolute timestamp since");
+    }
+
+    const unixSeconds = numFrom(since.value);
+    const unixMs = unixSeconds * 1000n;
+    const ms = Number(unixMs);
+    if (!Number.isFinite(ms)) {
+        throw new Error("sinceToDate received an invalid timestamp");
+    }
+
+    return new Date(ms);
+}
+
+export function getCellByJsType(client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType): AsyncGenerator<ccc.Cell, any, any> {
+    if (hashType == undefined) {
+        hashType = "data1";
+    }
+    const scriptsPatch = require("artifacts/deployment-patch/scripts_patch.json");
+    return client.findCells(
+        {
+            script: {
+                codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
+                hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
+                args: hexFrom(
+                    "0x0000" +
+                    codeHash.slice(2) +
+                    hexFrom(ccc.hashTypeToBytes(hashType)).slice(2))
+            },
+            scriptType: "type",
+            scriptSearchMode: "prefix",
+        });
+}
+
+export function getCellByLock(client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType): AsyncGenerator<ccc.Cell, any, any> {
+    if (hashType == undefined) {
+        hashType = "data1";
+    }
+    const scriptsPatch = require("artifacts/deployment-patch/scripts_patch.json");
+    return client.findCells(
+        {
+            script: {
+                codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
+                hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
+                args: hexFrom(
+                    "0x0000" +
+                    codeHash.slice(2) +
+                    hexFrom(ccc.hashTypeToBytes(hashType)).slice(2))
+            },
+            scriptType: "lock",
+            scriptSearchMode: "prefix",
+        });
+}
+

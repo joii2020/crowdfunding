@@ -7,7 +7,7 @@ import systemScript from "artifacts/deployment/system-scripts.json"
 import scriptsPatch from "artifacts/deployment-patch/scripts_patch.json"
 import { buildClient, buildSigner } from "../../tests/helper";
 
-import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, sinceFromDate, } from "shared"
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, sinceFromDate, PrjectCellInfo } from "shared"
 
 function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
   let prjCodeHash = scripts.devnet["project.bc"].codeHash;
@@ -372,8 +372,8 @@ async function all(signer: ccc.SignerCkbPrivateKey) {
   await signer.client.waitTransaction(lastDonation);
 
   // Success
-  const successTxHash = await projectSuccess(signer, projectTxHash);
-  console.log(`Success, txHash: ${successTxHash}`)
+  // const successTxHash = await projectSuccess(signer, projectTxHash);
+  // console.log(`Success, txHash: ${successTxHash}`)
 }
 
 async function main() {
@@ -387,6 +387,9 @@ async function main() {
   // Create global devnet client and signer for all tests in this describe block
   client = buildClient("devnet");
   signer = buildSigner(client);
+
+  let infos = await PrjectCellInfo.getAll(signer);
+  console.log(`${ccc.stringify(infos)}`);
 
   await all(signer);
 }
