@@ -1,44 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCcc, useSigner } from '@ckb-ccc/connector-react';
+import { ccc } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
 import { getContractConfig } from '@/utils/config';
 import { getNetwork } from '@/utils/client';
-
-const sampleProjects = [
-  {
-    id: 'proj-xxxx',
-    raised: 12000,
-    goal: 20000,
-    deadline: '2024-08-01 12:00',
-    status: 'Active',
-    owner: true,
-    readyToFinish: false,
-  },
-  {
-    id: 'proj-yyyy',
-    raised: 25000,
-    goal: 20000,
-    deadline: '2024-07-15 10:00',
-    status: 'ReadyFinish',
-    owner: false,
-    readyToFinish: true,
-  },
-  {
-    id: 'proj-zzzz',
-    raised: 5000,
-    goal: 10000,
-    deadline: '2024-06-01 09:00',
-    status: 'Expired',
-    owner: false,
-    readyToFinish: false,
-  },
-];
-
-const sampleClaims = [
-  { projectId: 'proj-xxxx', amount: 1000, deadline: '2024-08-01 12:00', status: 'Active' },
-  { projectId: 'proj-zzzz', amount: 2500, deadline: '2024-06-01 09:00', status: 'Expired' },
-];
+import { PrjectCellInfo } from 'shared';
 
 function StatusBadge({ text }: { text: string }) {
   const base =
@@ -51,9 +20,78 @@ function StatusBadge({ text }: { text: string }) {
   return <span className={`${base} ${styles[text] ?? ''}`}>{text}</span>;
 }
 
+const formatDeadline = (deadline: Date) =>
+  deadline.toLocaleString(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
 export default function Home() {
   const network = getNetwork();
   const { claimScript, contributionScript, projectScript } = getContractConfig(network);
+
+  const { client } = useCcc();
+  const walletSigner = useSigner();
+
+  const [projects, setProjects] = useState<PrjectCellInfo[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+
+  const fallbackSigner = useMemo(() => {
+    if (!client || typeof window === 'undefined' || !crypto?.getRandomValues) {
+      return undefined;
+    }
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const privateKey = `0x${Array.from(randomBytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')}`;
+    return new ccc.SignerCkbPrivateKey(client as ccc.Client, privateKey);
+  }, [client]);
+
+  const activeSigner =
+    (walletSigner as unknown as ccc.SignerCkbPrivateKey | undefined) ?? fallbackSigner;
+  const usingFallbackSigner = !walletSigner;
+
+  const loadProjects = useCallback(async () => {
+    if (!activeSigner) {
+      return;
+    }
+    const requestId = ++requestIdRef.current; // track latest request to avoid stale overwrites
+    setLoadingProjects(true);
+    setLoadError(null);
+    try {
+      const infos = await PrjectCellInfo.getAll(activeSigner);
+      const sorted = infos
+        .map((p, idx) => ({ p, idx }))
+        .sort((a, b) => {
+          const aPriority = a.p.owner && a.p.status === 'ReadyFinish' ? 0 : 1;
+          const bPriority = b.p.owner && b.p.status === 'ReadyFinish' ? 0 : 1;
+          if (aPriority !== bPriority) return aPriority - bPriority;
+          return a.idx - b.idx; // keep original order otherwise
+        })
+        .map((item) => item.p);
+      if (requestId === requestIdRef.current) {
+        setProjects(sorted);
+      }
+    } catch (err) {
+      if (requestId === requestIdRef.current) {
+        setLoadError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoadingProjects(false);
+      }
+    }
+  }, [activeSigner]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -65,6 +103,11 @@ export default function Home() {
             <p className="text-xs text-muted-foreground mt-1">
               Network: <span className="font-mono">{network}</span>
             </p>
+            {usingFallbackSigner && (
+              <p className="mt-1 text-xs text-amber-700">
+                未连接钱包，使用随机 signer 查看公共项目数据，连接后会自动刷新。
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -107,10 +150,21 @@ export default function Home() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">All Projects</h2>
-            <p className="text-xs text-muted-foreground">
-              Owner/Finish/Destroy buttons are mocked for layout only.
-            </p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <p>Owner/Finish/Destroy buttons are mocked for layout only.</p>
+              <button
+                onClick={loadProjects}
+                className="rounded-full border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
+          {loadError && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+              加载失败：{loadError}
+            </div>
+          )}
           <div className="overflow-hidden rounded-xl border border-slate-200">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50">
@@ -124,46 +178,64 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {sampleProjects.map((p) => (
-                  <tr key={p.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3 font-mono text-xs">{p.id}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-semibold">{p.raised.toLocaleString()}</span>{' '}
-                      / {p.goal.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{p.deadline}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge text={p.status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      {p.owner ? (
-                        <span className="rounded-full bg-slate-900 text-white px-2 py-0.5">
-                          Owner
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="px-4 py-3 space-x-2">
-                      {p.readyToFinish && (
-                        <button className="rounded-md bg-emerald-600 px-3 py-1 text-white hover:bg-emerald-500">
-                          Finish
-                        </button>
-                      )}
-                      {p.status === 'Expired' && (
-                        <button className="rounded-md bg-rose-600 px-3 py-1 text-white hover:bg-rose-500">
-                          Destroy
-                        </button>
-                      )}
-                      <Link
-                        href={`/projects`}
-                        className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50"
-                      >
-                        View
-                      </Link>
+                {loadingProjects ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={6}>
+                      Loading projects from chain...
                     </td>
                   </tr>
-                ))}
+                ) : projects.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={6}>
+                      No projects found.
+                    </td>
+                  </tr>
+                ) : (
+                  projects.map((p) => (
+                    <tr key={p.scriptHash} className="border-t border-slate-200">
+                      <td className="px-4 py-3 font-mono text-xs break-all">{p.scriptHash}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-semibold">{p.raised.toLocaleString()}</span> /{' '}
+                        {p.goal.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {formatDeadline(p.deadline)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <StatusBadge text={p.status} />
+                      </td>
+                      <td className="px-4 py-3 text-xs text-center">
+                        {p.owner ? (
+                          <span className="rounded-full bg-slate-900 text-white px-2 py-0.5">
+                            Owner
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {p.status === 'ReadyFinish' && p.owner && (
+                            <button className="rounded-md bg-emerald-600 px-3 py-1 text-white hover:bg-emerald-500">
+                              Finish
+                            </button>
+                          )}
+                          {p.status === 'Expired' && (
+                            <button className="rounded-md bg-rose-600 px-3 py-1 text-white hover:bg-rose-500">
+                              Destroy
+                            </button>
+                          )}
+                          <Link
+                            href={`/projects`}
+                            className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -171,44 +243,9 @@ export default function Home() {
 
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Your Claims</h2>
-          <div className="overflow-hidden rounded-xl border border-slate-200">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Project ID</th>
-                  <th className="px-4 py-3 font-medium">Amount (CKB)</th>
-                  <th className="px-4 py-3 font-medium">Deadline</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sampleClaims.map((c) => (
-                  <tr key={`${c.projectId}-${c.deadline}`} className="border-t border-slate-200">
-                    <td className="px-4 py-3 font-mono text-xs">{c.projectId}</td>
-                    <td className="px-4 py-3">{c.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{c.deadline}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge text={c.status} />
-                    </td>
-                    <td className="px-4 py-3 space-x-2">
-                      {c.status === 'Expired' ? (
-                        <>
-                          <button className="rounded-md bg-slate-900 px-3 py-1 text-white hover:bg-slate-800">
-                            Refund
-                          </button>
-                          <button className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50">
-                            Destroy Claim
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Claims list is not wired yet; connect your wallet to identify your contribution
+            cells, then hook it up to the claim logic.
           </div>
         </section>
       </div>
