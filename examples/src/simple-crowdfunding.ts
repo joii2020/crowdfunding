@@ -1,4 +1,4 @@
-import { hexFrom, ccc, hashTypeToBytes, Hex, bytesFrom, numLeToBytes, Cell, SignerEvm } from "@ckb-ccc/core";
+import { hexFrom, ccc, hashTypeToBytes, Hex, bytesFrom, numLeToBytes, Cell } from "@ckb-ccc/core";
 import dotenv from "dotenv";
 import path from "node:path";
 
@@ -7,7 +7,7 @@ import systemScript from "artifacts/deployment/system-scripts.json"
 import scriptsPatch from "artifacts/deployment-patch/scripts_patch.json"
 import { buildClient, buildSigner } from "../../tests/helper";
 
-import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, shannonToCKB, sinceFromDate, } from "shared"
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, sinceFromDate, } from "shared"
 
 function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
   let prjCodeHash = scripts.devnet["project.bc"].codeHash;
@@ -47,7 +47,9 @@ function updateSince(tx: ccc.Transaction): ccc.Transaction {
   return tx;
 }
 
-async function sendTx(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Promise<Hex> {
+async function sendTx(
+  signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction, waitSuc?: boolean
+): Promise<Hex> {
   await tx.completeInputsByCapacity(signer);
   tx = updateSince(tx);
   tx = updateTypeId(tx);
@@ -57,8 +59,8 @@ async function sendTx(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
   console.log(`${ccc.stringify(tx)}`);
   const txHash = await signer.sendTransaction(tx);
 
-  await signer.client.waitTransaction(txHash);
-
+  if (waitSuc)
+    await signer.client.waitTransaction(txHash);
   return txHash;
 }
 
@@ -128,11 +130,11 @@ async function createProject(signer: ccc.SignerCkbPrivateKey, goalAmount: bigint
     ],
   });
 
-  const txHash = await sendTx(signer, tx);
+  const txHash = await sendTx(signer, tx, true);
   return txHash;
 }
 
-async function donation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, ckbNum: bigint): Promise<Hex> {
+async function donation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, ckbNum: bigint, waitSuc?: boolean): Promise<Hex> {
   const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
   const contributionJsCode = scripts.devnet["contribution.bc"];
   const claimJsCode = scripts.devnet["claim.bc"];
@@ -144,6 +146,7 @@ async function donation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, ckb
   let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = projectScript.hash();
   contributionArgs.deadline = projectArgs.deadline;
+  contributionArgs.claimScript = projectArgs.claimScript;
 
   const outputCapacity = CKBToShannon(ckbNum);
   const contributionScript = {
@@ -204,11 +207,11 @@ async function donation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, ckb
     ],
   });
 
-  const txHash = await sendTx(signer, tx);
+  const txHash = await sendTx(signer, tx, waitSuc);
   return txHash;
 }
 
-async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex): Promise<Hex> {
+async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, waitSuc?: boolean): Promise<Hex> {
   const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
   const contributionJsCode = scripts.devnet["contribution.bc"];
 
@@ -219,6 +222,7 @@ async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex
   let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = projectScript.hash();
   contributionArgs.deadline = projectArgs.deadline;
+  contributionArgs.claimScript = projectArgs.claimScript;
 
   const contributionScript = {
     codeHash: ckbJsVmScript.codeHash,
@@ -268,7 +272,7 @@ async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex
     ],
   });
 
-  const txHash = await sendTx(signer, tx);
+  const txHash = await sendTx(signer, tx, waitSuc);
   return txHash;
 }
 
@@ -286,6 +290,7 @@ async function projectSuccess(signer: ccc.SignerCkbPrivateKey, projectTxHash: He
   let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = projectScript.hash();
   contributionArgs.deadline = projectArgs.deadline;
+  contributionArgs.claimScript = projectArgs.claimScript;
 
   const contributionScript = {
     codeHash: ckbJsVmScript.codeHash,
@@ -337,7 +342,7 @@ async function projectSuccess(signer: ccc.SignerCkbPrivateKey, projectTxHash: He
     ],
   });
 
-  const txHash = await sendTx(signer, tx);
+  const txHash = await sendTx(signer, tx, true);
   return txHash;
 }
 
@@ -352,10 +357,19 @@ async function all(signer: ccc.SignerCkbPrivateKey) {
   donations.push(await donation(signer, projectTxHash, 800n));
   donations.push(await donation(signer, projectTxHash, 700n));
 
+  // wait all 
+  for (const it of donations) {
+    await signer.client.waitTransaction(it);
+  }
+
   // merge
   let donationMerged = await mergeDonation(signer, projectTxHash);
   console.log(`donation (merged) TxHash: ${donationMerged}`);
-  donations.push(await donation(signer, projectTxHash, 300n));
+  const lastDonation = await donation(signer, projectTxHash, 300n);
+  donations.push(lastDonation);
+
+  await signer.client.waitTransaction(donationMerged);
+  await signer.client.waitTransaction(lastDonation);
 
   // Success
   const successTxHash = await projectSuccess(signer, projectTxHash);
@@ -373,33 +387,6 @@ async function main() {
   // Create global devnet client and signer for all tests in this describe block
   client = buildClient("devnet");
   signer = buildSigner(client);
-
-  // find project cell
-
-  let prjIter = client.findCells(
-    {
-      script: {
-        codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
-        hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
-        args: hexFrom(
-          "0x0000" +
-          scripts.devnet["project.bc"].codeHash.slice(2) +
-          hexFrom(hashTypeToBytes(scripts.devnet["project.bc"].hashType)).slice(2))
-      },
-      scriptType: "type",
-      scriptSearchMode: "prefix",
-    }
-  );
-
-  for (; ;) {
-    const it = await prjIter.next();
-    if (it.done)
-      break;
-
-    const cell = it.value;
-
-    console.log(`project Cell: ${ccc.stringify(cell.cellOutput.type)}`);
-  }
 
   await all(signer);
 }

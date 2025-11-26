@@ -7,6 +7,8 @@ import * as utils from "../../libs/utils"
 function checkContribution(args: ClaimArgs, prjArgs: PorjectArgs) {
   let capacity = undefined;
 
+  const jsCodeHash = HighLevel.loadScript().args.slice(2, 35);
+
   for (const it of new HighLevel.QueryIter((index, source) => {
     const lockScript = HighLevel.loadCellLock(index, source);
     if (!bytesEq(new utils.JsVMArgs(lockScript.args).jsScript, prjArgs.contributionScript))
@@ -17,6 +19,12 @@ function checkContribution(args: ClaimArgs, prjArgs: PorjectArgs) {
       return null;
     if (!contributionArgs.deadline.eq(prjArgs.deadline))
       return null;
+
+    // Check 
+    if (!bytesEq(jsCodeHash, contributionArgs.claimCodeHash)) {
+      throw Error(`Check contribution args: claimCodeHash faile`);
+    }
+
     // Check Type Script
     let typeScriptHash = HighLevel.loadCellTypeHash(index, source);
     if (typeScriptHash == null) {

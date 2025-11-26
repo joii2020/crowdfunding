@@ -33,6 +33,7 @@ async function donationSuccess() {
   let contributionArgs = new ContributionArgs();
   contributionArgs.projectScript = prjScript.hash();
   contributionArgs.deadline = prjArgs.deadline;
+  contributionArgs.claimScript = prjArgs.claimScript;
 
   let claimArgs = new ClaimArgs()
   claimArgs.projectScript = prjScript.hash();
