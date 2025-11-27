@@ -1,4 +1,4 @@
-import { ccc, hexFrom, Hex, numLeToBytes, Since, bytesFrom, numLeFromBytes, } from "@ckb-ccc/core";
+import { ccc, hexFrom, Hex, Since, } from "@ckb-ccc/core";
 import { zeroHash, joinHex, sinceFromDate } from "./index"
 
 function getExpirationTime(): Date {
@@ -37,7 +37,7 @@ export class ProjectArgs {
         if (data instanceof Uint8Array) {
             bin = data;
         } else {
-            bin = bytesFrom(data);
+            bin = ccc.bytesFrom(data);
         }
         let ret = new ProjectArgs();
         let offset = 0;
@@ -48,10 +48,10 @@ export class ProjectArgs {
         ret.creatorLockScriptHash = hexFrom(bin.slice(offset, offset + 32));
         offset += 32;
 
-        ret.goalAmount = numLeFromBytes(bin.slice(offset, offset + 16));
+        ret.goalAmount = ccc.numLeFromBytes(bin.slice(offset, offset + 16));
         offset += 16;
 
-        ret.deadline = Since.fromNum(numLeFromBytes(bin.slice(offset, offset + 8)));
+        ret.deadline = Since.fromNum(ccc.numLeFromBytes(bin.slice(offset, offset + 8)));
         offset += 8;
 
         ret.contributionScript = hexFrom(bin.slice(offset, offset + 33));
@@ -69,7 +69,7 @@ export class ProjectArgs {
         return joinHex(
             this.typeID,
             this.creatorLockScriptHash,
-            hexFrom(numLeToBytes(this.goalAmount, 16)),
+            hexFrom(ccc.numLeToBytes(this.goalAmount, 16)),
             hexFrom(toSince(this.deadline).toBytes(),),
             this.contributionScript,
             this.claimScript,

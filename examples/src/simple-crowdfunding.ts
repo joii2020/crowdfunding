@@ -7,7 +7,7 @@ import systemScript from "artifacts/deployment/system-scripts.json"
 import scriptsPatch from "artifacts/deployment-patch/scripts_patch.json"
 import { buildClient, buildSigner } from "../../tests/helper";
 
-import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, sinceFromDate, PrjectCellInfo } from "shared"
+import { ProjectArgs, ContributionArgs, ClaimArgs, CKBToShannon, sinceFromDate, PrjectCellInfo, getCellByTxHash, } from "shared"
 
 function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
   let prjCodeHash = scripts.devnet["project.bc"].codeHash;
@@ -80,14 +80,6 @@ async function setFee(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
   return tx;
 }
 
-async function getProjectCell(client: ccc.Client, txHash: Hex, index: number): Promise<Cell> {
-  const cell = await client.getCellLive({ txHash: txHash, index: index });
-  if (cell == undefined) {
-    throw Error(`Load ProjectCell Failed, txHash: ${txHash}, index: ${index}`);
-  }
-  return cell;
-}
-
 async function createProject(signer: ccc.SignerCkbPrivateKey, goalAmount: bigint): Promise<Hex> {
   const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
   const projectJsCode = scripts.devnet["project.bc"];
@@ -139,7 +131,7 @@ async function donation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex, ckb
   const contributionJsCode = scripts.devnet["contribution.bc"];
   const claimJsCode = scripts.devnet["claim.bc"];
 
-  const projectCell = await getProjectCell(signer.client, projectTxHash, 0);
+  const projectCell = await getCellByTxHash(signer.client, projectTxHash, 0);
   const projectScript = projectCell?.cellOutput.type!;
   const projectArgs = ProjectArgs.fromBytes(bytesFrom(projectScript.args!).slice(35));
 
@@ -215,7 +207,7 @@ async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTxHash: Hex
   const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
   const contributionJsCode = scripts.devnet["contribution.bc"];
 
-  const projectCell = await getProjectCell(signer.client, projectTxHash, 0);
+  const projectCell = await getCellByTxHash(signer.client, projectTxHash, 0);
   const projectScript = projectCell?.cellOutput.type!;
   const projectArgs = ProjectArgs.fromBytes(bytesFrom(projectScript.args!).slice(35));
 
@@ -281,7 +273,7 @@ async function projectSuccess(signer: ccc.SignerCkbPrivateKey, projectTxHash: He
   const projectJsCode = scripts.devnet["project.bc"];
   const contributionJsCode = scripts.devnet["contribution.bc"];
 
-  const projectCell = await getProjectCell(signer.client, projectTxHash, 0);
+  const projectCell = await getCellByTxHash(signer.client, projectTxHash, 0);
   const projectScript = projectCell?.cellOutput.type!;
   const projectArgs = ProjectArgs.fromBytes(bytesFrom(projectScript.args!).slice(35));
 
@@ -347,9 +339,10 @@ async function projectSuccess(signer: ccc.SignerCkbPrivateKey, projectTxHash: He
 }
 
 async function all(signer: ccc.SignerCkbPrivateKey) {
-  const projectTxHash = await createProject(signer, 2000n);
-  // const projectTxHash = "0xa677021904dee049600b2c9d50020192518413878505e2d390be107628327222"
-  console.log(`Project Tx Hash: ${projectTxHash}`);
+  // const projectTxHash = await createProject(signer, 2000n);
+  const projectTxHash = "0x7f5703f4322eee237e90e9d100febf4dd9547bb0f13425108781728cf511bea8"
+  // console.log(`Project Tx Hash: ${projectTxHash}`);
+  // const cc = await getCellByTypeHash(signer.client, hexFrom("0x9f930ed1b5eb68194895b2bd1e96b9f4a440518948751dfc38cc74479f31d0da"));
 
   // donation
   let donations = []
@@ -372,8 +365,8 @@ async function all(signer: ccc.SignerCkbPrivateKey) {
   await signer.client.waitTransaction(lastDonation);
 
   // Success
-  // const successTxHash = await projectSuccess(signer, projectTxHash);
-  // console.log(`Success, txHash: ${successTxHash}`)
+  const successTxHash = await projectSuccess(signer, projectTxHash);
+  console.log(`Success, txHash: ${successTxHash}`)
 }
 
 async function main() {

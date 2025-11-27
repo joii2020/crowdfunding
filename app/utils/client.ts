@@ -1,11 +1,18 @@
 import { ccc, CellDepInfoLike, KnownScript, Script } from '@ckb-ccc/core';
 import systemScripts from "artifacts/deployment/system-scripts.json";
+
+const DEFAULT_TESTNET_SCRIPTS = new ccc.ClientPublicTestnet()
+  .scripts as Record<KnownScript, KnownScriptType>;
+
 export const buildClient = (network: 'devnet' | 'testnet' | 'mainnet') => {
   switch (network) {
     case 'devnet':
       return new ccc.ClientPublicTestnet({
         url: 'http://localhost:28114', // the url from offckb devnet
-        scripts: DEVNET_SCRIPTS,
+        scripts: {
+          ...DEFAULT_TESTNET_SCRIPTS,
+          ...DEVNET_SCRIPTS,
+        },
       });
     case 'testnet':
       return new ccc.ClientPublicTestnet();
