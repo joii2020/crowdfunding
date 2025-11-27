@@ -276,7 +276,7 @@ export default function Home() {
                             </button>
                           )}
                           <Link
-                            href={`/projects`}
+                            href={`/projects?txHash=${encodeURIComponent(p.txHash)}&txIndex=${p.txIndex.toString()}`}
                             className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50"
                           >
                             View

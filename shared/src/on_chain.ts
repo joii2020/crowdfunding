@@ -15,49 +15,61 @@ export class PrjectCellInfo {
     public deadline!: Date;
     public status!: "Active" | "ReadyFinish" | "Expired";
     public owner!: boolean;
+    public contributionInfo!: ContributionCellInfo[];
+
+    static async newByCell(signer: ccc.SignerCkbPrivateKey, cell: Cell): Promise<PrjectCellInfo> {
+        let projectScript = cell.cellOutput.type!;
+        const prjArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
+        let info = new PrjectCellInfo();
+
+        info.txHash = cell.outPoint.txHash;
+        info.txIndex = cell.outPoint.index;
+        info.typeId = prjArgs.typeID;
+
+        info.goal = shannonToCKB(prjArgs.goalAmount);
+        if (prjArgs.deadline instanceof Date) {
+            info.deadline = prjArgs.deadline;
+        } else {
+            info.deadline = sinceToDate(prjArgs.deadline);
+        }
+        let lockScriptHash = cell.cellOutput.lock.hash();
+        const usersLockHash = (await signer.getRecommendedAddressObj()).script.hash();
+        info.owner = lockScriptHash === usersLockHash;
+
+        const cInfos = await ContributionCellInfo.getAll(signer, info);
+        info.contributionInfo = cInfos;
+        let totalAmount = 0n;
+        for (const it of cInfos) {
+            totalAmount += it.capacity;
+        }
+        info.raised = shannonToCKB(totalAmount);
+
+        if (info.raised >= info.goal) {
+            info.status = "ReadyFinish"
+        } else {
+            if (info.deadline <= new Date())
+                info.status = "Expired"
+            else
+                info.status = "Active";
+        }
+        return info;
+    }
 
     static async getAll(signer: ccc.SignerCkbPrivateKey): Promise<PrjectCellInfo[]> {
         let cells = getCellByType(signer.client, hexFrom(scripts.devnet["project.bc"].codeHash));
 
         let infos: PrjectCellInfo[] = [];
         for await (const cell of cells) {
-            let projectScript = cell.cellOutput.type!;
-            const prjArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
-            let info = new PrjectCellInfo();
-
-            info.txHash = cell.outPoint.txHash;
-            info.txIndex = cell.outPoint.index;
-            info.typeId = prjArgs.typeID;
-
-            info.goal = shannonToCKB(prjArgs.goalAmount);
-            if (prjArgs.deadline instanceof Date) {
-                info.deadline = prjArgs.deadline;
-            } else {
-                info.deadline = sinceToDate(prjArgs.deadline);
-            }
-            let lockScriptHash = cell.cellOutput.lock.hash();
-            const usersLockHash = (await signer.getRecommendedAddressObj()).script.hash();
-            info.owner = lockScriptHash === usersLockHash;
-
-            const cInfos = await ContributionCellInfo.getAll(signer, info);
-            let totalAmount = 0n;
-            for (const it of cInfos) {
-                totalAmount += it.capacity;
-            }
-            info.raised = shannonToCKB(totalAmount);
-
-            if (info.raised >= info.goal) {
-                info.status = "ReadyFinish"
-            } else {
-                if (info.deadline <= new Date())
-                    info.status = "Expired"
-                else
-                    info.status = "Active";
-            }
+            const info = await this.newByCell(signer, cell);
             infos.push(info);
         }
 
         return infos;
+    }
+
+    static async getByTxHash(signer: ccc.SignerCkbPrivateKey, txHash: Hex, txIndex: bigint): Promise<PrjectCellInfo> {
+        let cell = await getCellByTxHash(signer.client, txHash, txIndex);
+        return PrjectCellInfo.newByCell(signer, cell);
     }
 }
 
@@ -225,16 +237,19 @@ export async function createCrowfunding(
     const txHash = await sendTx(signer, tx);
     // return txHash;
 
-
     return new PrjectCellInfo();
 }
 
 export async function getCellByTxHash(client: ccc.Client, txHash: Hex, index: number | bigint): Promise<Cell> {
-    const cell = await client.getCellLive({ txHash: txHash, index: index });
-    if (cell == undefined) {
-        throw Error(`Load ProjectCell Failed, txHash: ${txHash}, index: ${index}`);
+    console.log(`Load cell by txHash: ${txHash}`);
+    for (let i = 0; i < 10; i++) {
+        const cell = await client.getCellLive({ txHash: txHash, index: index });
+        if (cell != undefined)
+            return cell;
+        if (i < 2)
+            await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return cell;
+    throw Error(`Load ProjectCell Failed, txHash: ${txHash}, index: ${index}`);
 }
 
 // export async function getCellByTypeHash(client: ccc.Client, hash: Hex): Promise<Cell> {
