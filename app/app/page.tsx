@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
 import { getContractConfig } from '@/utils/config';
-import { getNetwork } from '@/utils/client';
-import { PrjectCellInfo, createCrowfunding } from 'shared';
+import { buildClient, getNetwork } from '@/utils/client';
+import { ClaimCellInfo, PrjectCellInfo, createCrowfunding, shannonToCKB } from 'shared';
 
 function StatusBadge({ text }: { text: string }) {
   const base =
@@ -40,55 +40,89 @@ const getDefaultDeadlineInput = () => {
   return toDateTimeLocalValue(d);
 };
 
+const projectCache: {
+  data: PrjectCellInfo[] | null;
+  updating: boolean;
+} = {
+  data: null,
+  updating: false,
+};
+
+const preferredClient = buildClient(getNetwork());
+
+type ProjectListItem = PrjectCellInfo & { owner?: boolean };
+
+const fetchProjects = async (client: ccc.Client, forceRefresh = false) => {
+  if (forceRefresh) {
+    projectCache.data = null;
+  }
+
+  if (!forceRefresh && projectCache.data)
+    return projectCache.data;
+  if (projectCache.updating)
+    return [];
+
+  projectCache.updating = true;
+
+  const clientForNetwork = client.url === preferredClient.url ? client : preferredClient;
+  const data = await PrjectCellInfo.getAll(clientForNetwork);
+  if (data.length != 0)
+    projectCache.data = data;
+
+  projectCache.updating = false;
+  return data;
+};
+
 export default function Home() {
   const network = getNetwork();
   const { claimScript, contributionScript, projectScript } = getContractConfig(network);
 
-  const { client } = useCcc();
   const walletSigner = useSigner();
 
-  const [projects, setProjects] = useState<PrjectCellInfo[]>([]);
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [goalAmount, setGoalAmount] = useState('');
   const [deadlineInput, setDeadlineInput] = useState(() => getDefaultDeadlineInput());
   const [description, setDescription] = useState('');
-  const requestIdRef = useRef(0);
+  const [claims, setClaims] = useState<ClaimCellInfo[]>([]);
+  const [loadingClaims, setLoadingClaims] = useState(false);
+  const [claimsError, setClaimsError] = useState<string | null>(null);
 
-  const fallbackSigner = useMemo(() => {
-    if (!client || typeof window === 'undefined' || !crypto?.getRandomValues) {
-      return undefined;
-    }
-    const randomBytes = new Uint8Array(32);
-    crypto.getRandomValues(randomBytes);
-    const privateKey = `0x${Array.from(randomBytes)
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')}`;
-    return new ccc.SignerCkbPrivateKey(client as ccc.Client, privateKey);
-  }, [client]);
+  const context = useCcc();
 
-  const activeSigner =
-    (walletSigner as unknown as ccc.SignerCkbPrivateKey | undefined) ?? fallbackSigner;
-  const usingFallbackSigner = !walletSigner;
-
-  const loadProjects = useCallback(async () => {
-    if (!activeSigner) {
-      return;
-    }
-    const requestId = ++requestIdRef.current; // track latest request to avoid stale overwrites
+  const loadProjects = useCallback(async (forceRefresh = false) => {
     setLoadingProjects(true);
     setLoadError(null);
+
     try {
-      const infos = await PrjectCellInfo.getAll(activeSigner);
-      const ownerWeight = (p: PrjectCellInfo) => (p.owner ? 0 : 1);
+      const infos = await fetchProjects(context.client, forceRefresh);
+
+      let signerLockScriptHash: string | null = null;
+      if (walletSigner) {
+        try {
+          const signerLock = (await walletSigner.getRecommendedAddressObj()).script;
+          signerLockScriptHash = signerLock.hash();
+        } catch (error) {
+          console.warn('Failed to load signer lock script hash', error);
+        }
+      }
+
+      const infosWithOwner: ProjectListItem[] = signerLockScriptHash
+        ? infos.map((info) => ({ ...info, owner: info.lockScriptHash === signerLockScriptHash }))
+        : infos;
+
+      const ownerWeight = (p: ProjectListItem) => (p.owner ? 0 : 1);
       const statusWeight = (p: PrjectCellInfo) => (p.status === 'ReadyFinish' ? 0 : 1);
 
-      const sorted = infos
+      const sorted = infosWithOwner
         .map((p, idx) => ({ p, idx }))
         .sort((a, b) => {
-          const ownerDiff = ownerWeight(a.p) - ownerWeight(b.p);
-          if (ownerDiff !== 0) return ownerDiff; // owners first
+          if (signerLockScriptHash) {
+            const ownerDiff = ownerWeight(a.p) - ownerWeight(b.p);
+            if (ownerDiff !== 0) return ownerDiff; // owners first
+          }
 
           const statusDiff = statusWeight(a.p) - statusWeight(b.p);
           if (statusDiff !== 0) return statusDiff; // ready to finish before others
@@ -96,23 +130,54 @@ export default function Home() {
           return a.idx - b.idx; // keep original order otherwise
         })
         .map((item) => item.p);
-      if (requestId === requestIdRef.current) {
-        setProjects(sorted);
-      }
-    } catch (err) {
-      if (requestId === requestIdRef.current) {
-        setLoadError(err instanceof Error ? err.message : String(err));
-      }
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoadingProjects(false);
-      }
+      setProjects(sorted);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load projects';
+      setLoadError(message);
     }
-  }, [activeSigner]);
+
+    setLoadingProjects(false);
+
+  }, [context.client, walletSigner]);
 
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  useEffect(() => {
+    let canceled = false;
+    const loadClaims = async () => {
+      if (!walletSigner) {
+        setClaims([]);
+        setClaimsError(null);
+        setLoadingClaims(false);
+        return;
+      }
+
+      setLoadingClaims(true);
+      setClaimsError(null);
+      try {
+        const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
+        const claimCells = (await ClaimCellInfo.getAll(signer, null)) ?? [];
+        if (!canceled) {
+          setClaims(claimCells);
+        }
+      } catch (error) {
+        if (!canceled) {
+          const message = error instanceof Error ? error.message : 'Failed to load claims';
+          setClaimsError(message);
+        }
+      }
+      if (!canceled) {
+        setLoadingClaims(false);
+      }
+    };
+
+    loadClaims();
+    return () => {
+      canceled = true;
+    };
+  }, [walletSigner]);
 
   const handleOpenCreate = () => {
     setGoalAmount('');
@@ -150,20 +215,14 @@ export default function Home() {
             <p className="text-xs text-muted-foreground mt-1">
               Network: <span className="font-mono">{network}</span>
             </p>
-            {usingFallbackSigner && (
+            {
               <p className="mt-1 text-xs text-amber-700">
                 Wallet not connected; using a random signer for public project data. Will refresh
                 after you connect.
               </p>
-            )}
+            }
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/projects"
-              className="rounded-full border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-            >
-              Go to Projects Page
-            </Link>
             <ConnectWallet />
           </div>
         </header>
@@ -194,8 +253,8 @@ export default function Home() {
             onClick={handleOpenCreate}
             disabled={!walletSigner}
             className={`rounded-lg px-4 py-2 text-sm text-white ${walletSigner
-                ? 'bg-slate-900 hover:bg-slate-800'
-                : 'bg-slate-400 cursor-not-allowed'
+              ? 'bg-slate-900 hover:bg-slate-800'
+              : 'bg-slate-400 cursor-not-allowed'
               }`}
           >
             Create Project
@@ -208,7 +267,7 @@ export default function Home() {
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <p>Owner/Destroy buttons are mocked for layout only.</p>
               <button
-                onClick={loadProjects}
+                onClick={() => loadProjects(true)}
                 className="rounded-full border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50"
               >
                 Refresh
@@ -247,11 +306,11 @@ export default function Home() {
                   </tr>
                 ) : (
                   projects.map((p) => (
-                    <tr key={p.txHash} className="border-t border-slate-200">
-                      <td className="px-4 py-3 font-mono text-xs break-all">{p.txHash}</td>
+                    <tr key={p.tx.txHash} className="border-t border-slate-200">
+                      <td className="px-4 py-3 font-mono text-xs break-all">{p.tx.txHash}</td>
                       <td className="px-4 py-3">
-                        <span className="font-semibold">{p.raised.toLocaleString()}</span> /{' '}
-                        {p.goal.toLocaleString()}
+                        <span className="font-semibold">{shannonToCKB(p.raised).toLocaleString()}</span> /{' '}
+                        {shannonToCKB(p.goal).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {formatDeadline(p.deadline)}
@@ -276,7 +335,7 @@ export default function Home() {
                             </button>
                           )}
                           <Link
-                            href={`/projects?txHash=${encodeURIComponent(p.txHash)}&txIndex=${p.txIndex.toString()}`}
+                            href={`/projects?txHash=${encodeURIComponent(p.tx.txHash)}&txIndex=${p.tx.index.toString()}`}
                             className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50"
                           >
                             View
@@ -291,13 +350,76 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Your Claims</h2>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            Claims list is not wired yet; connect your wallet to identify your contribution
-            cells, then hook it up to the claim logic.
-          </div>
-        </section>
+        {walletSigner && (
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">Your Claims</h2>
+            {claimsError && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+                Failed to load: {claimsError}
+              </div>
+            )}
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-50 text-left text-slate-600">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">TxHash/Index</th>
+                    <th className="px-4 py-3 font-medium">Amount (CKB)</th>
+                    <th className="px-4 py-3 font-medium">Deadline</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingClaims ? (
+                    <tr>
+                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={5}>
+                        Loading your claim cells...
+                      </td>
+                    </tr>
+                  ) : claims.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={5}>
+                        No claim cells found for this address.
+                      </td>
+                    </tr>
+                  ) : (
+                    claims.map((c) => {
+                      const status = c.deadline.getTime() < Date.now() ? 'Expired' : 'Active';
+                      return (
+                        <tr key={`${c.txHash}-${c.txIndex.toString()}`} className="border-t border-slate-200">
+                          <td className="px-4 py-3 font-mono text-xs break-all">{c.txHash}/{c.txIndex.toString()}</td>
+                          <td className="px-4 py-3">
+                            {shannonToCKB(c.capacity).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {formatDeadline(c.deadline)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge text={status} />
+                          </td>
+                          <td className="px-4 py-3 space-x-2">
+                            {status === 'Expired' ? (
+                              <>
+                                <button className="rounded-md bg-slate-900 px-3 py-1 text-white hover:bg-slate-800">
+                                  Refund
+                                </button>
+                                <button className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50">
+                                  Destroy Claim
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </div>
 
       {showCreateModal && (

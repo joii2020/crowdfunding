@@ -111,6 +111,28 @@ export class ClaimArgs {
         public backerLockScript: Hex = zeroHash(),
     ) { }
 
+    static fromBytes(data: Hex | Uint8Array): ClaimArgs {
+        let bin!: Uint8Array;
+        if (data instanceof Uint8Array) {
+            bin = data;
+        } else {
+            bin = ccc.bytesFrom(data);
+        }
+        let ret = new ClaimArgs();
+        let offset = 0;
+
+        ret.projectScript = hexFrom(bin.slice(offset, offset + 32));
+        offset += 32;
+
+        ret.deadline = Since.fromNum(ccc.numLeFromBytes(bin.slice(offset, offset + 8)));
+        offset += 8;
+
+        ret.backerLockScript = hexFrom(bin.slice(offset, offset + 32));
+        offset += 32;
+
+        return ret;
+    }
+
     toBytes(): Hex {
         return joinHex(
             this.projectScript,
