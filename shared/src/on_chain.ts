@@ -1,6 +1,6 @@
-import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, SignerCkbPrivateKey } from "@ckb-ccc/core"
+import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, SignerCkbPrivateKey, bytesFrom, } from "@ckb-ccc/core"
 
-import { ProjectArgs, ContributionArgs, sinceToDate, sinceFromDate, shannonToCKB, CKBToShannon, joinHex, getCellByJsType as getCellByType, ClaimArgs } from "./index"
+import { ProjectArgs, ContributionArgs, sinceToDate, sinceFromDate, CKBToShannon, joinHex, getCellByJsType as getCellByType, ClaimArgs } from "./index"
 
 import scripts from "artifacts/deployment/scripts.json";
 import systemScript from "artifacts/deployment/system-scripts.json"
@@ -249,12 +249,42 @@ async function sendTx(
     return txHash;
 }
 
+async function txHashToProjectOutpoint(client: ccc.Client, txHash: Hex): Promise<OutPoint> {
+    let tx = await client.getTransaction(txHash);
+    if (tx == undefined)
+        throw Error(`Unknow TxHash: ${txHash}`);
+
+    const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
+    const projectJsCode = scripts.devnet["project.bc"];
+
+    let index: bigint | undefined = undefined;
+    for (let i = 0; i < tx.transaction.outputs.length; i++) {
+        const typeScript = tx.transaction.outputs[i].type;
+        if (typeScript == undefined)
+            continue;
+        if (typeScript.codeHash != ckbJsVmScript.codeHash || typeScript.hashType! != ckbJsVmScript.hashType)
+            continue;
+
+        const jsScript = bytesFrom(typeScript.args).slice(2, 35);
+        if (hexFrom(jsScript) == joinHex(hexFrom(projectJsCode.codeHash),
+            hexFrom(hashTypeToBytes(projectJsCode.hashType)))
+        ) {
+            index = BigInt(i);
+            break;
+        }
+    }
+    if (index == undefined)
+        throw Error(`Tx not found project cell: TxHash: ${txHash}`);
+
+    return new OutPoint(txHash, index);
+}
+
 export async function createCrowfunding(
     signer: ccc.SignerCkbPrivateKey,
     goal: bigint,
     deadline: Date,
     description: String
-): Promise<Hex> {
+): Promise<OutPoint> {
     const signerLock = (await signer.getRecommendedAddressObj()).script;
 
     const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
@@ -301,9 +331,7 @@ export async function createCrowfunding(
     });
 
     const txHash = await sendTx(signer, tx);
-    return txHash;
-
-    // return new PrjectCellInfo();
+    return await txHashToProjectOutpoint(signer.client, txHash);
 }
 
 export async function donationToProject(

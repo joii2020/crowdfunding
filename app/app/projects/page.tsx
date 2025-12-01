@@ -7,18 +7,10 @@ import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc, hexFrom, Hex, OutPoint } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
 import { getNetwork, buildClient } from '@/utils/client';
-import {
-  ContributionCellInfo,
-  ClaimCellInfo,
-  donationToProject,
-  mergeDonation,
-  PrjectCellInfo,
-  shannonToCKB,
-  crowfundingSuccess,
-} from 'shared';
+import * as shared from 'shared';
 
 type ProjectDetailCacheEntry = {
-  data: PrjectCellInfo | null;
+  data: shared.PrjectCellInfo | null;
   updating: boolean;
 };
 
@@ -69,13 +61,13 @@ const fetchProjectByTx = async (
 
   cache.updating = true;
   const clientForNetwork = client && client.url === preferredClient.url ? client : preferredClient;
-  cache.data = await PrjectCellInfo.getByTxHash(clientForNetwork, tx);
+  cache.data = await shared.PrjectCellInfo.getByTxHash(clientForNetwork, tx);
   cache.updating = false;
 
   return cache.data;
 };
 
-const getContributionKey = (c: ContributionCellInfo) => `${c.tx.txHash}-${c.tx.index}`;
+const getContributionKey = (c: shared.ContributionCellInfo) => `${c.tx.txHash}-${c.tx.index}`;
 
 export default function ProjectsPage() {
   const network = getNetwork();
@@ -108,10 +100,10 @@ export default function ProjectsPage() {
   }
   const txHash = hexFrom(txHashParam);
 
-  const [project, setProject] = useState<PrjectCellInfo | null>(null);
-  const [contributionCells, setContributionCells] = useState<ContributionCellInfo[]>([]);
+  const [project, setProject] = useState<shared.PrjectCellInfo | null>(null);
+  const [contributionCells, setContributionCells] = useState<shared.ContributionCellInfo[]>([]);
   const [loadingProject, setLoadingProject] = useState(false);
-  const [claims, setClaims] = useState<ClaimCellInfo[]>([]);
+  const [claims, setClaims] = useState<shared.ClaimCellInfo[]>([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [selectedContributions, setSelectedContributions] = useState<Set<string>>(new Set());
@@ -196,7 +188,7 @@ export default function ProjectsPage() {
         const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
         const cachedProject =
           projectDetailCache[getProjectKey(project.tx)]?.data ?? project;
-        const claimCells = await ClaimCellInfo.getAll(signer, cachedProject);
+        const claimCells = await shared.ClaimCellInfo.getAll(signer, cachedProject);
         if (!canceled) {
           setClaims(claimCells ?? []);
         }
@@ -248,7 +240,7 @@ export default function ProjectsPage() {
 
       try {
         const activeSigner = walletSigner as unknown as ccc.SignerCkbPrivateKey;
-        await donationToProject(activeSigner, amount, new OutPoint(txHash, txIndex));
+        await shared.donationToProject(activeSigner, amount, new OutPoint(txHash, txIndex));
         setShowDonateModal(false);
       } catch (error) {
         console.error('Failed to submit donation', error);
@@ -285,7 +277,7 @@ export default function ProjectsPage() {
       return;
 
     const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
-    mergeDonation(signer, project.tx, selected)
+    shared.mergeDonation(signer, project.tx, selected)
       .then(() => {
         setSelectedContributions(new Set());
         reloadProject();
@@ -304,7 +296,7 @@ export default function ProjectsPage() {
     setLoadError(null);
     try {
       const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
-      await crowfundingSuccess(signer, project.tx);
+      await shared.crowfundingSuccess(signer, project.tx);
       await reloadProject();
     } catch (error) {
       console.error('Failed to finish project', error);
@@ -382,11 +374,11 @@ export default function ProjectsPage() {
           <div className="text-lg font-semibold">
             Raised / Goal:{' '}
             <span className="font-mono">
-              {project ? shannonToCKB(project.raised).toLocaleString() : loadingProject ? 'Loading...' : '—'}
+              {project ? shared.shannonToCKB(project.raised).toLocaleString() : loadingProject ? 'Loading...' : '—'}
             </span>{' '}
             /{' '}
             <span className="font-mono">
-              {project ? shannonToCKB(project.goal).toLocaleString() : loadingProject ? 'Loading...' : '—'}
+              {project ? shared.shannonToCKB(project.goal).toLocaleString() : loadingProject ? 'Loading...' : '—'}
             </span>{' '}
             CKB
           </div>
@@ -479,7 +471,7 @@ export default function ProjectsPage() {
                     <tr key={`${c.tx.txHash}-${idx}`} className="border-t border-slate-200">
                       <td className="px-4 py-3 font-mono text-xs break-all">{c.tx.txHash}/{c.tx.index}</td>
                       <td className="px-4 py-3">
-                        {shannonToCKB(c.capacity).toLocaleString()}
+                        {shared.shannonToCKB(c.capacity).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -536,7 +528,7 @@ export default function ProjectsPage() {
                         <tr key={`${c.txHash}-${c.txIndex.toString()}`} className="border-t border-slate-200">
                           <td className="px-4 py-3 font-mono text-xs break-all">{c.txHash}/{c.txIndex.toString()}</td>
                           <td className="px-4 py-3">
-                            {shannonToCKB(c.capacity).toLocaleString()}
+                            {shared.shannonToCKB(c.capacity).toLocaleString()}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
                             {formatDeadline(c.deadline)}

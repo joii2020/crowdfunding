@@ -7,7 +7,7 @@ import { ccc } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
 import { getContractConfig } from '@/utils/config';
 import { buildClient, getNetwork } from '@/utils/client';
-import { ClaimCellInfo, PrjectCellInfo, createCrowfunding, shannonToCKB } from 'shared';
+import * as shared from 'shared';
 
 function StatusBadge({ text }: { text: string }) {
   const base =
@@ -41,7 +41,7 @@ const getDefaultDeadlineInput = () => {
 };
 
 const projectCache: {
-  data: PrjectCellInfo[] | null;
+  data: shared.PrjectCellInfo[] | null;
   updating: boolean;
 } = {
   data: null,
@@ -50,7 +50,7 @@ const projectCache: {
 
 const preferredClient = buildClient(getNetwork());
 
-type ProjectListItem = PrjectCellInfo & { owner?: boolean };
+type ProjectListItem = shared.PrjectCellInfo & { owner?: boolean };
 
 const fetchProjects = async (client: ccc.Client, forceRefresh = false) => {
   if (forceRefresh) {
@@ -65,13 +65,19 @@ const fetchProjects = async (client: ccc.Client, forceRefresh = false) => {
   projectCache.updating = true;
 
   const clientForNetwork = client.url === preferredClient.url ? client : preferredClient;
-  const data = await PrjectCellInfo.getAll(clientForNetwork);
+  const data = await shared.PrjectCellInfo.getAll(clientForNetwork);
   if (data.length != 0)
     projectCache.data = data;
 
   projectCache.updating = false;
   return data;
 };
+
+declare global {
+  interface Window {
+    devCreateTestProject?: () => Promise<void>;
+  }
+}
 
 export default function Home() {
   const network = getNetwork();
@@ -86,11 +92,39 @@ export default function Home() {
   const [goalAmount, setGoalAmount] = useState('');
   const [deadlineInput, setDeadlineInput] = useState(() => getDefaultDeadlineInput());
   const [description, setDescription] = useState('');
-  const [claims, setClaims] = useState<ClaimCellInfo[]>([]);
+  const [claims, setClaims] = useState<shared.ClaimCellInfo[]>([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
 
   const context = useCcc();
+
+  useEffect(() => {
+    if (!walletSigner) {
+      window.devCreateTestProject = undefined;
+      return;
+    }
+
+    window.devCreateTestProject = async () => {
+      const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
+      const deadline = new Date(Date.now() + 10 * 60 * 1000);
+
+      const prjOutpoint = await shared.createCrowfunding(signer, 3000n, deadline, '测试一下-----');
+      await signer.client.waitTransaction(prjOutpoint.txHash);
+
+      let tx = await shared.donationToProject(signer, 1000n, prjOutpoint);
+      await signer.client.waitTransaction(tx);
+      tx = await shared.donationToProject(signer, 1000n, prjOutpoint);
+      await signer.client.waitTransaction(tx);
+      tx = await shared.donationToProject(signer, 800n, prjOutpoint);
+      await signer.client.waitTransaction(tx);
+
+      console.log('CreateTestProject done');
+    };
+
+    return () => {
+      window.devCreateTestProject = undefined;
+    };
+  }, [walletSigner]);
 
   const loadProjects = useCallback(async (forceRefresh = false) => {
     setLoadingProjects(true);
@@ -114,7 +148,7 @@ export default function Home() {
         : infos;
 
       const ownerWeight = (p: ProjectListItem) => (p.owner ? 0 : 1);
-      const statusWeight = (p: PrjectCellInfo) => (p.status === 'ReadyFinish' ? 0 : 1);
+      const statusWeight = (p: shared.PrjectCellInfo) => (p.status === 'ReadyFinish' ? 0 : 1);
 
       const sorted = infosWithOwner
         .map((p, idx) => ({ p, idx }))
@@ -158,7 +192,7 @@ export default function Home() {
       setClaimsError(null);
       try {
         const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
-        const claimCells = (await ClaimCellInfo.getAll(signer, null)) ?? [];
+        const claimCells = (await shared.ClaimCellInfo.getAll(signer, null)) ?? [];
         if (!canceled) {
           setClaims(claimCells);
         }
@@ -197,7 +231,7 @@ export default function Home() {
       if (activeSigner == undefined) {
         alert('Please connect your wallet to create a project.');
       } else {
-        createCrowfunding(activeSigner, goal, deadline, description);
+        shared.createCrowfunding(activeSigner, goal, deadline, description);
       }
 
       setShowCreateModal(false);
@@ -309,8 +343,8 @@ export default function Home() {
                     <tr key={p.tx.txHash} className="border-t border-slate-200">
                       <td className="px-4 py-3 font-mono text-xs break-all">{p.tx.txHash}</td>
                       <td className="px-4 py-3">
-                        <span className="font-semibold">{shannonToCKB(p.raised).toLocaleString()}</span> /{' '}
-                        {shannonToCKB(p.goal).toLocaleString()}
+                        <span className="font-semibold">{shared.shannonToCKB(p.raised).toLocaleString()}</span> /{' '}
+                        {shared.shannonToCKB(p.goal).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-600">
                         {formatDeadline(p.deadline)}
@@ -389,7 +423,7 @@ export default function Home() {
                         <tr key={`${c.txHash}-${c.txIndex.toString()}`} className="border-t border-slate-200">
                           <td className="px-4 py-3 font-mono text-xs break-all">{c.txHash}/{c.txIndex.toString()}</td>
                           <td className="px-4 py-3">
-                            {shannonToCKB(c.capacity).toLocaleString()}
+                            {shared.shannonToCKB(c.capacity).toLocaleString()}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
                             {formatDeadline(c.deadline)}
