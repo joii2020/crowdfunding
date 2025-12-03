@@ -1,10 +1,10 @@
-import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, SignerCkbPrivateKey, bytesFrom, } from "@ckb-ccc/core"
-
-import { ProjectArgs, ContributionArgs, sinceToDate, sinceFromDate, CKBToShannon, joinHex, getCellByJsType as getCellByType, ClaimArgs } from "./index"
+import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, bytesFrom, numBeToBytes, CellOutputLike, numLeFromBytes, } from "@ckb-ccc/core"
+import * as shared from "./index"
 
 import scripts from "artifacts/deployment/scripts.json";
-import systemScript from "artifacts/deployment/system-scripts.json"
 import scriptsPatch from "artifacts/deployment-patch/scripts_patch.json"
+import { bigInt } from "@ckb-js-std/core/dist/molecule/codec";
+// import systemScript from "artifacts/deployment/system-scripts.json"
 
 export class PrjectCellInfo {
     public tx!: OutPoint;
@@ -13,12 +13,13 @@ export class PrjectCellInfo {
     public raised!: bigint;
     public goal!: bigint;
     public deadline!: Date;
-    public status!: "Active" | "ReadyFinish" | "Expired";
+    public description!: String;
+    public status!: "Active" | "ReadyFinish" | "Expired" | "Destroyed";
     public contributionInfo!: ContributionCellInfo[];
 
-    static async newByCell(client: ccc.Client, cell: Cell): Promise<PrjectCellInfo> {
+    static async newByCell(client: ccc.Client, cell: Cell, isLive: boolean): Promise<PrjectCellInfo> {
         let projectScript = cell.cellOutput.type!;
-        const prjArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
+        const prjArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
         let info = new PrjectCellInfo();
 
         info.tx = new OutPoint(cell.outPoint.txHash, cell.outPoint.index);
@@ -28,7 +29,7 @@ export class PrjectCellInfo {
         if (prjArgs.deadline instanceof Date) {
             info.deadline = prjArgs.deadline;
         } else {
-            info.deadline = sinceToDate(prjArgs.deadline);
+            info.deadline = shared.sinceToDate(prjArgs.deadline);
         }
         let lockScriptHash = cell.cellOutput.lock.hash();
         info.lockScriptHash = lockScriptHash;
@@ -40,24 +41,30 @@ export class PrjectCellInfo {
             totalAmount += it.capacity;
         }
         info.raised = totalAmount;
-
-        if (info.raised >= info.goal) {
-            info.status = "ReadyFinish"
-        } else {
-            if (info.deadline <= new Date())
-                info.status = "Expired"
-            else
+        if (isLive == false)
+            info.status = "Destroyed";
+        else if (info.deadline <= new Date())
+            info.status = "Expired";
+        else {
+            if (info.raised >= info.goal) {
+                info.status = "ReadyFinish"
+            } else {
                 info.status = "Active";
+            }
         }
+
+        const descBytes = ccc.bytesFrom(cell.outputData);
+        info.description = Buffer.from(descBytes).toString("utf8");
+
         return info;
     }
 
     static async getAll(client: ccc.Client): Promise<PrjectCellInfo[]> {
-        let cells = getCellByType(client, hexFrom(scripts.devnet["project.bc"].codeHash));
+        let cells = shared.getCellByJsType(client, hexFrom(scripts.devnet["project.bc"].codeHash));
 
         let infos: PrjectCellInfo[] = [];
         for await (const cell of cells) {
-            const info = await this.newByCell(client, cell);
+            const info = await this.newByCell(client, cell, true);
             infos.push(info);
         }
         return infos;
@@ -65,7 +72,7 @@ export class PrjectCellInfo {
 
     static async getByTxHash(client: ccc.Client, tx: OutPoint): Promise<PrjectCellInfo> {
         let cell = await getCellByTxHash(client, tx);
-        return PrjectCellInfo.newByCell(client, cell);
+        return PrjectCellInfo.newByCell(client, cell.cell, cell.isLive);
     }
 }
 
@@ -78,20 +85,20 @@ export class ContributionCellInfo {
     static async getAll(
         client: ccc.Client, projectInfo: PrjectCellInfo
     ): Promise<ContributionCellInfo[]> {
-        let args = new ContributionArgs();
+        let args = new shared.ContributionArgs();
 
         let prjCell = await getCellByTxHash(client, projectInfo.tx);
-        args.projectScript = prjCell.cellOutput.type!.hash();
+        args.projectScript = prjCell.cell.cellOutput.type!.hash();
         args.deadline = projectInfo.deadline;
         args.claimScript =
-            joinHex(
+            shared.joinHex(
                 hexFrom(scripts.devnet["claim.bc"].codeHash),
                 hexFrom(hashTypeToBytes(scripts.devnet["claim.bc"].hashType))
             );
         const contributionScript = {
             codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
             hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
-            args: joinHex(
+            args: shared.joinHex(
                 "0x0000",
                 hexFrom(scripts.devnet["contribution.bc"].codeHash),
                 hexFrom(hashTypeToBytes(scripts.devnet["contribution.bc"].hashType)),
@@ -102,7 +109,7 @@ export class ContributionCellInfo {
         let infos: ContributionCellInfo[] = [];
         for await (const cell of client.findCellsByLock(contributionScript)) {
             let info = new ContributionCellInfo();
-            info.projectTx = prjCell.outPoint;
+            info.projectTx = prjCell.cell.outPoint;
             info.tx = cell.outPoint;
 
             info.capacity = cell.cellOutput.capacity;
@@ -114,11 +121,9 @@ export class ContributionCellInfo {
 }
 
 export class ClaimCellInfo {
-    // public projectTxHash!: Hex;
-    // public projectTxIndex!: bigint;
-
     public txHash!: Hex;
     public txIndex!: bigint;
+    public isLive!: boolean;
 
     public deadline!: Date;
     public capacity!: bigint;
@@ -129,54 +134,84 @@ export class ClaimCellInfo {
         const lockScript = (await signer.getRecommendedAddressObj()).script;
         const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
         const claimJsCode = scripts.devnet["claim.bc"];
-        const claimCodeInfo = joinHex(
+        const claimCodeInfo = shared.joinHex(
             hexFrom(claimJsCode.codeHash), hexFrom(hashTypeToBytes(claimJsCode.hashType)));
 
-        let projectCell: Cell | undefined = undefined;
-        if (projectInfo) {
-            projectCell = await signer.client.getCell(projectInfo?.tx);
-        }
-
         const infos: ClaimCellInfo[] = [];
-        for await (const cell of signer.client.findCellsByLock(lockScript)) {
-            const typeScript = cell.cellOutput.type;
-            if (typeScript == undefined)
-                continue;
-            if (typeScript.codeHash != ckbJsVmScript.codeHash || typeScript.hashType != ckbJsVmScript.hashType)
-                continue;
-            if (typeScript.args.length < 35)
-                continue;
-            if (typeScript.args.slice(3 * 2, 36 * 2) != claimCodeInfo.slice(2)) {
-                continue;
-            }
-            const args = ClaimArgs.fromBytes(ccc.bytesFrom(typeScript.args!).slice(35));
 
-            if (projectInfo) {
-                if (args.projectScript != projectCell?.cellOutput.type?.hash()) {
+        if (projectInfo) {
+            const projectCell = await signer.client.getCell(projectInfo?.tx);
+            let txs = signer.client.findTransactions(
+                {
+                    script: {
+                        codeHash: ckbJsVmScript.codeHash,
+                        hashType: ckbJsVmScript.hashType,
+                        args: shared.joinHex(
+                            hexFrom("0x0000"),
+                            hexFrom(claimJsCode.codeHash),
+                            hexFrom(hashTypeToBytes(claimJsCode.hashType)),
+                            new shared.ClaimArgs(projectCell?.cellOutput.type?.hash(), projectInfo.deadline, lockScript.hash()).toBytes()
+                        ),
+                    },
+                    scriptType: "type",
+                    scriptSearchMode: "exact",
+                }
+            );
+            for await (const tx of txs) {
+                if (tx.isInput)
+                    continue;
+                let cell = await signer.client.getCell({ txHash: tx.txHash, index: tx.txIndex });
+                if (cell == undefined)
+                    throw Error(`Found not cell by tx: ${tx.txHash}`);
+
+
+                let info = new ClaimCellInfo();
+                info.txIndex = cell.outPoint.index;
+                info.deadline = projectInfo.deadline;
+                info.txHash = cell.outPoint.txHash;
+
+                if (await signer.client.getCellLive({ txHash: tx.txHash, index: tx.txIndex }) == undefined)
+                    info.isLive = false;
+                else
+                    info.isLive = true;
+
+                let outputData = ccc.bytesFrom(cell.outputData);
+                if (outputData.length < 16) {
                     continue;
                 }
+                info.capacity = ccc.numFromBytes(outputData.slice(0, 16));
+                infos.push(info);
             }
+        } else {
+            for await (const cell of signer.client.findCellsByLock(lockScript)) {
+                const typeScript = cell.cellOutput.type;
+                if (typeScript == undefined)
+                    continue;
+                if (typeScript.codeHash != ckbJsVmScript.codeHash || typeScript.hashType != ckbJsVmScript.hashType)
+                    continue;
+                if (typeScript.args.length < 35)
+                    continue;
+                if (typeScript.args.slice(3 * 2, 36 * 2) != claimCodeInfo.slice(2)) {
+                    continue;
+                }
+                const args = shared.ClaimArgs.fromBytes(ccc.bytesFrom(typeScript.args!).slice(35));
+                let info = new ClaimCellInfo();
+                info.txHash = cell.outPoint.txHash;
+                info.txIndex = cell.outPoint.index;
 
-            let info = new ClaimCellInfo();
-            // info.projectTxHash = prjCell.outPoint.txHash;
-            // info.projectTxIndex = prjCell.outPoint.index;
-
-            info.txHash = cell.outPoint.txHash;
-            info.txIndex = cell.outPoint.index;
-
-            if (args.deadline instanceof Date) {
-                info.deadline = args.deadline;
-            } else {
-                info.deadline = sinceToDate(args.deadline);
+                if (args.deadline instanceof Date) {
+                    info.deadline = args.deadline;
+                } else {
+                    info.deadline = shared.sinceToDate(args.deadline);
+                }
+                let outputData = ccc.bytesFrom(cell.outputData);
+                if (outputData.length < 16) {
+                    throw new Error("Claim Cell data length is less than 16 bytes");
+                }
+                info.capacity = ccc.numFromBytes(outputData.slice(0, 16));
+                infos.push(info);
             }
-            let outputData = ccc.bytesFrom(cell.outputData);
-            if (outputData.length < 16) {
-                throw new Error("Claim Cell data length is less than 16 bytes");
-            }
-            info.capacity = ccc.numFromBytes(outputData.slice(0, 16));
-            infos.push(info);
         }
-
         return infos;
     }
 }
@@ -209,10 +244,9 @@ function updateTypeId(tx: ccc.Transaction): ccc.Transaction {
 }
 
 function updateSince(tx: ccc.Transaction): ccc.Transaction {
-    let now = new Date();
-    now.setDate(now.getDate() - 1);
+    let now = new Date(Date.now() - 120_000); // 2min
 
-    let nowSince = sinceFromDate(now);
+    let nowSince = shared.sinceFromDate(now);
     for (let i = 0; i < tx.inputs.length; i++) {
         tx.inputs[i].since = nowSince.toNum();
     }
@@ -225,12 +259,12 @@ async function setFee(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Pro
         feeRate = await signer.client.getFeeRate();
     } catch { }
     await tx.completeFeeBy(signer, feeRate);
-    console.log(
-        "fee need=",
-        tx.estimateFee(feeRate),
-        "actual=",
-        await tx.getFee(signer.client),
-    );
+    // console.log(
+    //     "fee need=",
+    //     tx.estimateFee(feeRate),
+    //     "actual=",
+    //     await tx.getFee(signer.client),
+    // );
 
     return tx;
 }
@@ -249,13 +283,13 @@ async function sendTx(
     return txHash;
 }
 
-async function txHashToProjectOutpoint(client: ccc.Client, txHash: Hex): Promise<OutPoint> {
+async function getProjectByTx(client: ccc.Client, txHash: Hex): Promise<OutPoint> {
     let tx = await client.getTransaction(txHash);
     if (tx == undefined)
         throw Error(`Unknow TxHash: ${txHash}`);
 
     const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
-    const projectJsCode = scripts.devnet["project.bc"];
+    const jsCode = scripts.devnet["project.bc"];
 
     let index: bigint | undefined = undefined;
     for (let i = 0; i < tx.transaction.outputs.length; i++) {
@@ -266,8 +300,38 @@ async function txHashToProjectOutpoint(client: ccc.Client, txHash: Hex): Promise
             continue;
 
         const jsScript = bytesFrom(typeScript.args).slice(2, 35);
-        if (hexFrom(jsScript) == joinHex(hexFrom(projectJsCode.codeHash),
-            hexFrom(hashTypeToBytes(projectJsCode.hashType)))
+        if (hexFrom(jsScript) == shared.joinHex(hexFrom(jsCode.codeHash),
+            hexFrom(hashTypeToBytes(jsCode.hashType)))
+        ) {
+            index = BigInt(i);
+            break;
+        }
+    }
+    if (index == undefined)
+        throw Error(`Tx not found project cell: TxHash: ${txHash}`);
+
+    return new OutPoint(txHash, index);
+}
+
+async function getClaimByTx(client: ccc.Client, txHash: Hex): Promise<OutPoint> {
+    let tx = await client.getTransaction(txHash);
+    if (tx == undefined)
+        throw Error(`Unknow TxHash: ${txHash}`);
+
+    const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
+    const jsCode = scripts.devnet["claim.bc"];
+
+    let index: bigint | undefined = undefined;
+    for (let i = 0; i < tx.transaction.outputs.length; i++) {
+        const typeScript = tx.transaction.outputs[i].type;
+        if (typeScript == undefined)
+            continue;
+        if (typeScript.codeHash != ckbJsVmScript.codeHash || typeScript.hashType! != ckbJsVmScript.hashType)
+            continue;
+
+        const jsScript = bytesFrom(typeScript.args).slice(2, 35);
+        if (hexFrom(jsScript) == shared.joinHex(hexFrom(jsCode.codeHash),
+            hexFrom(hashTypeToBytes(jsCode.hashType)))
         ) {
             index = BigInt(i);
             break;
@@ -292,9 +356,9 @@ export async function createCrowfunding(
     const contributionJsCode = scripts.devnet["contribution.bc"];
     const claimJsCode = scripts.devnet["claim.bc"];
 
-    let prjArgs = new ProjectArgs();
+    let prjArgs = new shared.ProjectArgs();
     prjArgs.creatorLockScriptHash = signerLock.hash();
-    prjArgs.goalAmount = CKBToShannon(goal);
+    prjArgs.goalAmount = shared.CKBToShannon(goal);
     prjArgs.contributionScript = hexFrom(contributionJsCode.codeHash + hexFrom(hashTypeToBytes(contributionJsCode.hashType)).slice(2));
     prjArgs.claimScript = hexFrom(claimJsCode.codeHash + hexFrom(hashTypeToBytes(claimJsCode.hashType)).slice(2));
     prjArgs.deadline = deadline;
@@ -331,7 +395,7 @@ export async function createCrowfunding(
     });
 
     const txHash = await sendTx(signer, tx);
-    return await txHashToProjectOutpoint(signer.client, txHash);
+    return await getProjectByTx(signer.client, txHash);
 }
 
 export async function donationToProject(
@@ -342,15 +406,15 @@ export async function donationToProject(
     const claimJsCode = scripts.devnet["claim.bc"];
 
     const projectCell = await getCellByTxHash(signer.client, projectTx);
-    const projectScript = projectCell?.cellOutput.type!;
-    const projectArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
+    const projectScript = projectCell.cell?.cellOutput.type!;
+    const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
 
-    let contributionArgs = new ContributionArgs();
+    let contributionArgs = new shared.ContributionArgs();
     contributionArgs.projectScript = projectScript.hash();
     contributionArgs.deadline = projectArgs.deadline;
     contributionArgs.claimScript = projectArgs.claimScript;
 
-    const outputCapacity = CKBToShannon(amount);
+    const outputCapacity = shared.CKBToShannon(amount);
     const contributionScript = {
         codeHash: ckbJsVmScript.codeHash,
         hashType: ckbJsVmScript.hashType,
@@ -363,7 +427,7 @@ export async function donationToProject(
     };
 
     const usersLock = (await signer.getRecommendedAddressObj()).script;
-    let claimArgs = new ClaimArgs();
+    let claimArgs = new shared.ClaimArgs();
     claimArgs.projectScript = projectScript.hash();
     claimArgs.deadline = projectArgs.deadline;
     claimArgs.backerLockScript = usersLock.hash();
@@ -422,10 +486,10 @@ export async function mergeDonation(
     const contributionJsCode = scripts.devnet["contribution.bc"];
 
     const projectCell = await getCellByTxHash(signer.client, porjectPoint);
-    const projectScript = projectCell?.cellOutput.type!;
-    const projectArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
+    const projectScript = projectCell.cell?.cellOutput.type!;
+    const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
 
-    let contributionArgs = new ContributionArgs();
+    let contributionArgs = new shared.ContributionArgs();
     contributionArgs.projectScript = projectScript.hash();
     contributionArgs.deadline = projectArgs.deadline;
     contributionArgs.claimScript = projectArgs.claimScript;
@@ -449,7 +513,7 @@ export async function mergeDonation(
     }
 
     const firstInputCell = await getCellByTxHash(signer.client, infos[0].tx);
-    const contributionTypeScript = firstInputCell.cellOutput.type ?? null;
+    const contributionTypeScript = firstInputCell.cell.cellOutput.type ?? null;
 
     // Merge All
     let tx = ccc.Transaction.from({
@@ -479,18 +543,16 @@ export async function mergeDonation(
     return txHash;
 }
 
-export async function crowfundingSuccess(signer: SignerCkbPrivateKey, projectTx: OutPoint): Promise<Hex> {
+export async function crowfundingSuccess(signer: ccc.SignerCkbPrivateKey, projectTx: OutPoint): Promise<Hex> {
     const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
     const projectJsCode = scripts.devnet["project.bc"];
     const contributionJsCode = scripts.devnet["contribution.bc"];
 
     const projectCell = await getCellByTxHash(signer.client, projectTx);
-    const projectScript = projectCell?.cellOutput.type!;
-    const projectArgs = ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
+    const projectScript = projectCell?.cell.cellOutput.type!;
+    const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
 
-    console.log(`Project Cell: ${ccc.stringify(projectCell)}`);
-
-    let contributionArgs = new ContributionArgs();
+    let contributionArgs = new shared.ContributionArgs();
     contributionArgs.projectScript = projectScript.hash();
     contributionArgs.deadline = projectArgs.deadline;
     contributionArgs.claimScript = projectArgs.claimScript;
@@ -518,9 +580,8 @@ export async function crowfundingSuccess(signer: SignerCkbPrivateKey, projectTx:
     if (totalCapacity < projectArgs.goalAmount) {
         throw Error("Capacity is not enough");
     }
-    console.log(`Total: ${totalCapacity}, Project need: ${projectArgs.goalAmount}`);
 
-    inputs.push({ outPoint: projectCell.outPoint })
+    inputs.push({ outPoint: projectCell.cell.outPoint })
 
     const signerLock = (await signer.getRecommendedAddressObj()).script;
 
@@ -535,7 +596,7 @@ export async function crowfundingSuccess(signer: SignerCkbPrivateKey, projectTx:
             {
                 lock: signerLock,
                 type: null,
-                capacity: projectCell.cellOutput.capacity,
+                capacity: projectCell.cell.cellOutput.capacity,
             },
         ],
         cellDeps: [
@@ -549,17 +610,191 @@ export async function crowfundingSuccess(signer: SignerCkbPrivateKey, projectTx:
     return txHash;
 }
 
-export async function getCellByTxHash(client: ccc.Client, tx: OutPoint): Promise<Cell> {
-    for (let i = 0; i < 10; i++) {
-        const cell = await client.getCellLive(tx);
-        if (cell != undefined)
-            return cell;
-        if (i < 2)
-            await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+export async function getCellByTxHash(client: ccc.Client, tx: OutPoint): Promise<{ cell: Cell, isLive: boolean }> {
+    let cell = await client.getCellLive(tx);
+    if (cell != undefined)
+        return { cell: cell, isLive: true };
+
+    cell = await client.getCell(tx);
+    if (cell != undefined)
+        return { cell: cell, isLive: false };
+
     throw Error(`Load ProjectCell Failed, tx: ${ccc.stringify(tx)}`);
 }
 
-// export async function getCellByTypeHash(client: ccc.Client, hash: Hex): Promise<Cell> {
-//     client.findCellsPaged
-// }
+export async function destroyProject(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
+    const signerLock = (await signer.getRecommendedAddressObj()).script;
+
+    const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
+    const projectJsCode = scripts.devnet["project.bc"];
+
+    const outpoint = await getProjectByTx(signer.client, txHash);
+    const prjCell = await getCellByTxHash(signer.client, outpoint);
+
+    let tx = ccc.Transaction.from({
+        inputs: [
+            { outPoint: outpoint }
+        ],
+        outputs: [
+            {
+                lock: signerLock,
+                capacity: prjCell.cell.cellOutput.capacity
+            },
+        ],
+        cellDeps: [
+            ...ckbJsVmScript.cellDeps.map((c) => c.cellDep),
+            ...projectJsCode.cellDeps.map((c) => c.cellDep),
+        ],
+    });
+
+    return sendTx(signer, tx);
+}
+
+export async function destroyClaim(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
+    const signerLock = (await signer.getRecommendedAddressObj()).script;
+
+    const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
+    const claimJsCode = scripts.devnet["claim.bc"];
+
+    const outpoint = await getClaimByTx(signer.client, txHash);
+    const claimCell = await getCellByTxHash(signer.client, outpoint);
+
+    let tx = ccc.Transaction.from({
+        inputs: [
+            { outPoint: outpoint }
+        ],
+        outputs: [
+            {
+                lock: signerLock,
+                capacity: claimCell.cell.cellOutput.capacity
+            },
+        ],
+        cellDeps: [
+            ...ckbJsVmScript.cellDeps.map((c) => c.cellDep),
+            ...claimJsCode.cellDeps.map((c) => c.cellDep),
+        ],
+    });
+
+    return sendTx(signer, tx);
+}
+
+export async function refound(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
+    const signerLock = (await signer.getRecommendedAddressObj()).script;
+
+    const ckbJsVmScript = scriptsPatch.devnet["ckb-js-vm"];
+    const projectJsCode = scripts.devnet["project.bc"];
+    const contributionJsCode = scripts.devnet["contribution.bc"];
+    const claimJsCode = scripts.devnet["claim.bc"];
+
+    const outpoint = await getClaimByTx(signer.client, txHash);
+    const claimCell = await getCellByTxHash(signer.client, outpoint);
+    const amount = numLeFromBytes(claimCell.cell.outputData);
+    const claimArgs = shared.ClaimArgs.fromBytes(bytesFrom(claimCell.cell.cellOutput.type?.args!).slice(35));
+
+    const txInfo = await signer.client.getTransaction(txHash);
+    if (txInfo == undefined)
+        throw Error(`Unknow Claim Tx, get tx info failed by txHash: ${txHash}`);
+
+    // Find project by cellDeps
+    let projectCell: Cell | undefined = undefined;
+    for (const deps of txInfo.transaction.cellDeps) {
+        const depsCell = await signer.client.getCell({ txHash: deps.outPoint.txHash, index: deps.outPoint.index });
+        if (depsCell == undefined)
+            throw Error(`Unknow Error, There is an invalid cell in Deps`);
+
+        // Is Project
+        if (depsCell.cellOutput.type?.hash() == claimArgs.projectScript) {
+            projectCell = depsCell;
+            break;
+        }
+    }
+    if (projectCell == undefined) {
+        throw Error(`Found not ProjectCell in tx deps`);
+    }
+
+    // Find  Contribution in tx
+    let contributionInput: OutPoint[] = [];
+    let contributionOutput: CellOutputLike[] = [];
+    for (let i = 0; i < txInfo.transaction.outputs.length; i++) {
+        const output = txInfo.transaction.outputs[i];
+        if (output.lock.codeHash != ckbJsVmScript.codeHash || output.lock.hashType != ckbJsVmScript.hashType)
+            continue;
+
+        const jsScript = bytesFrom(output.lock.args).slice(2, 35);
+        if (hexFrom(jsScript) != shared.joinHex(hexFrom(contributionJsCode.codeHash),
+            hexFrom(hashTypeToBytes(contributionJsCode.hashType))))
+            continue;
+
+        let cell = await signer.client.getCellLive({ txHash: txHash, index: i });
+        if (cell == undefined)
+            continue;
+
+        contributionInput.push(new OutPoint(txHash, BigInt(i)));
+    }
+    contributionOutput.push({
+        lock: signerLock,
+        capacity: amount,
+    });
+
+    if (contributionInput.length == 0) {
+        let args = new shared.ContributionArgs();
+
+        args.projectScript = projectCell.cellOutput.type?.hash()!;
+        args.deadline = claimArgs.deadline;
+        args.claimScript =
+            shared.joinHex(
+                hexFrom(scripts.devnet["claim.bc"].codeHash),
+                hexFrom(hashTypeToBytes(scripts.devnet["claim.bc"].hashType))
+            );
+        const contributionScript = {
+            codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
+            hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
+            args: shared.joinHex(
+                "0x0000",
+                hexFrom(scripts.devnet["contribution.bc"].codeHash),
+                hexFrom(hashTypeToBytes(scripts.devnet["contribution.bc"].hashType)),
+                hexFrom(args.toBytes()),
+            ),
+        };
+        let needAmount = amount
+        let firstContributionCell = undefined;
+        for await (const cell of signer.client.findCellsByLock(contributionScript)) {
+            if (firstContributionCell == undefined) {
+                firstContributionCell = cell;
+            }
+            contributionInput.push(cell.outPoint);
+            needAmount -= cell.cellOutput.capacity
+            if (needAmount <= 0) {
+                break;
+            }
+        }
+        if (needAmount < 0) {
+            contributionOutput.push({
+                lock: firstContributionCell?.cellOutput.lock!,
+                type: firstContributionCell?.cellOutput.type,
+                capacity: needAmount * -1n,
+            })
+        }
+    }
+
+    let tx = ccc.Transaction.from({
+        inputs: [
+            ...contributionInput.map((outPoint) => ({ outPoint })),
+            { outPoint: outpoint },
+        ],
+        outputs: [
+            ...contributionOutput,
+            {
+                lock: signerLock,
+                capacity: claimCell.cell.cellOutput.capacity
+            },
+        ],
+        cellDeps: [
+            ...ckbJsVmScript.cellDeps.map((c) => c.cellDep),
+            ...contributionJsCode.cellDeps.map((c) => c.cellDep),
+            ...claimJsCode.cellDeps.map((c) => c.cellDep),
+        ],
+    });
+
+    return sendTx(signer, tx);
+}

@@ -38,7 +38,18 @@ async function projectSuccess(signer: ccc.SignerCkbPrivateKey, projectTx: OutPoi
   return txHash;
 }
 
-async function all(signer: ccc.SignerCkbPrivateKey) {
+async function main() {
+  dotenv.config({
+    path: path.resolve(__dirname, "../../.env"),
+  });
+
+  let client: ccc.Client;
+  let signer: ccc.SignerCkbPrivateKey;
+
+  // Create global devnet client and signer for all tests in this describe block
+  client = buildClient("devnet");
+  signer = buildSigner(client);
+
   const projectTx = await createProject(signer, 2000n);
   // const projectTxHash = "0x7f5703f4322eee237e90e9d100febf4dd9547bb0f13425108781728cf511bea8"
 
@@ -65,23 +76,5 @@ async function all(signer: ccc.SignerCkbPrivateKey) {
   // Success
   const successTxHash = await projectSuccess(signer, projectTx);
   console.log(`Success, txHash: ${successTxHash}`)
-}
-
-async function main() {
-  dotenv.config({
-    path: path.resolve(__dirname, "../../.env"),
-  });
-
-  let client: ccc.Client;
-  let signer: ccc.SignerCkbPrivateKey;
-
-  // Create global devnet client and signer for all tests in this describe block
-  client = buildClient("devnet");
-  signer = buildSigner(client);
-
-  let infos = await shared.PrjectCellInfo.getAll(signer.client);
-  console.log(`${ccc.stringify(infos)}`);
-
-  await all(signer);
 }
 main();

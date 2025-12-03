@@ -106,18 +106,7 @@ export default function Home() {
 
     window.devCreateTestProject = async () => {
       const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
-      const deadline = new Date(Date.now() + 10 * 60 * 1000);
-
-      const prjOutpoint = await shared.createCrowfunding(signer, 3000n, deadline, '测试一下-----');
-      await signer.client.waitTransaction(prjOutpoint.txHash);
-
-      let tx = await shared.donationToProject(signer, 1000n, prjOutpoint);
-      await signer.client.waitTransaction(tx);
-      tx = await shared.donationToProject(signer, 1000n, prjOutpoint);
-      await signer.client.waitTransaction(tx);
-      tx = await shared.donationToProject(signer, 800n, prjOutpoint);
-      await signer.client.waitTransaction(tx);
-
+      shared.dev_tool.createProject(signer);
       console.log('CreateTestProject done');
     };
 
@@ -363,11 +352,6 @@ export default function Home() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          {p.status === 'Expired' && (
-                            <button className="rounded-md bg-rose-600 px-3 py-1 text-white hover:bg-rose-500">
-                              Destroy
-                            </button>
-                          )}
                           <Link
                             href={`/projects?txHash=${encodeURIComponent(p.tx.txHash)}&txIndex=${p.tx.index.toString()}`}
                             className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50"

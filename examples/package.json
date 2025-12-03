@@ -5,8 +5,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "all": "pnpm run-simple",
-    "run-simple": "tsx src/simple-crowdfunding.ts",
+    "all": "pnpm run-simple:success && pnpm run-simple:timeout",
+    "run-simple:success": "tsx src/simple-success.ts",
+    "run-simple:timeout": "tsx src/simple-timeout.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [],

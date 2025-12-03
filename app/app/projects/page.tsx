@@ -23,6 +23,7 @@ function StatusBadge({ text }: { text: string }) {
     'Ready to Finish': 'bg-amber-50 text-amber-700 border-amber-200',
     'Pending Merge': 'bg-amber-50 text-amber-700 border-amber-200',
     Expired: 'bg-rose-50 text-rose-700 border-rose-200',
+    Destroyed: 'bg-slate-100 text-slate-500 border-slate-200',
     Live: 'bg-slate-100 text-slate-700 border-slate-200',
   };
   const label = text === 'ReadyFinish' ? 'Ready to Finish' : text;
@@ -108,6 +109,9 @@ export default function ProjectsPage() {
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [selectedContributions, setSelectedContributions] = useState<Set<string>>(new Set());
   const [finishingProject, setFinishingProject] = useState(false);
+  const [destroyingProject, setDestroyingProject] = useState(false);
+  const [destroyingClaimTxHash, setDestroyingClaimTxHash] = useState<Hex | null>(null);
+  const [refundingClaimTxHash, setRefundingClaimTxHash] = useState<Hex | null>(null);
 
   useEffect(() => {
     let canceled = false;
@@ -306,17 +310,79 @@ export default function ProjectsPage() {
     }
   }, [walletSigner, project, reloadProject]);
 
+  const handleDestroyProject = useCallback(async () => {
+    if (!walletSigner || !project)
+      return;
+
+    setDestroyingProject(true);
+    setLoadError(null);
+    try {
+      const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
+      await shared.destroyProject(signer, project.tx.txHash);
+      setContributionCells([]);
+      setProject(null);
+    } catch (error) {
+      console.error('Failed to destroy project', error);
+      setLoadError('Failed to destroy project. Please try again.');
+    } finally {
+      setDestroyingProject(false);
+      setLoadingProject(false);
+    }
+  }, [walletSigner, project]);
+
+  const handleDestroyClaim = useCallback(
+    async (txHashToDestroy: Hex, txIndex: bigint) => {
+      if (!walletSigner)
+        return;
+
+      setDestroyingClaimTxHash(txHashToDestroy);
+      try {
+        const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
+        await shared.destroyClaim(signer, txHashToDestroy);
+        setClaims((prev) =>
+          prev.filter((claim) => !(claim.txHash === txHashToDestroy && claim.txIndex === txIndex)),
+        );
+      } catch (error) {
+        console.error('Failed to destroy claim', error);
+      } finally {
+        setDestroyingClaimTxHash(null);
+      }
+    },
+    [walletSigner],
+  );
+
+  const handleRefundClaim = useCallback(
+    async (txHashToRefund: Hex, txIndex: bigint) => {
+      if (!walletSigner)
+        return;
+
+      setRefundingClaimTxHash(txHashToRefund);
+      try {
+        const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
+        await shared.refound(signer, txHashToRefund);
+        setClaims((prev) =>
+          prev.filter((claim) => !(claim.txHash === txHashToRefund && claim.txIndex === txIndex)),
+        );
+      } catch (error) {
+        console.error('Failed to refund claim', error);
+      } finally {
+        setRefundingClaimTxHash(null);
+      }
+    },
+    [walletSigner],
+  );
+
   const isOwner = useMemo(
     () => Boolean(project && signerLockScriptHash && project.lockScriptHash === signerLockScriptHash),
     [project, signerLockScriptHash],
   );
 
   const canFinish = useMemo(
-    () => Boolean(isOwner && project && project.raised >= project.goal),
+    () => Boolean(isOwner && project && project.status === 'ReadyFinish'),
     [isOwner, project],
   );
 
-  const statusText = project ? project.status : 'Active';
+  const statusText = project?.status ?? 'Active';
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -363,13 +429,6 @@ export default function ProjectsPage() {
         <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-5 space-y-3">
           <div className="flex items-center gap-3">
             <StatusBadge text={statusText} />
-            {
-              // project?.owner && (
-              //   <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-xs">
-              //     Owner
-              //   </span>
-              // )
-            }
           </div>
           <div className="text-lg font-semibold">
             Raised / Goal:{' '}
@@ -393,6 +452,28 @@ export default function ProjectsPage() {
               ? `Loaded via txHash=${txHash}, txIndex=${txIndexParam}`
               : 'Add ?txHash=...&txIndex=... to load project data.'}
           </div>
+          <p className="text-sm text-slate-700">
+            Project Creator:{' '}
+            {project ? (
+              isOwner ? (
+                <span className="rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide">
+                  You
+                </span>
+              ) : (
+                <span className="font-mono break-all">{project.lockScriptHash}</span>
+              )
+            ) : (
+              <span className="font-mono break-all">{loadingProject ? 'Loading...' : '—'}</span>
+            )}
+          </p>
+          <div className="text-xs font-semibold uppercase text-slate-500 tracking-wide">Description</div>
+          <p className="text-sm text-slate-800 whitespace-pre-line">
+            {project
+              ? project.description?.trim() || 'No description provided.'
+              : loadingProject
+                ? 'Loading description...'
+                : '—'}
+          </p>
           <div className="flex flex-wrap gap-3">
             {canFinish && (
               <button
@@ -403,12 +484,15 @@ export default function ProjectsPage() {
                 {finishingProject ? 'Finishing...' : 'Finish'}
               </button>
             )}
-            <button
-              className="rounded-lg bg-rose-600 text-white px-4 py-2 text-sm hover:bg-rose-500 disabled:opacity-60"
-              disabled={!project || project.status !== 'Expired' || !isOwner || loadingProject}
-            >
-              Destroy
-            </button>
+            {project?.status !== 'Destroyed' && (
+              <button
+                onClick={handleDestroyProject}
+                className="rounded-lg bg-rose-600 text-white px-4 py-2 text-sm hover:bg-rose-500 disabled:opacity-60"
+                disabled={!project || project.status !== 'Expired' || !isOwner || loadingProject || destroyingProject}
+              >
+                {destroyingProject ? 'Destroying...' : 'Destroy'}
+              </button>
+            )}
           </div>
         </section>
 
@@ -416,26 +500,30 @@ export default function ProjectsPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Contributions</h2>
             <div className="flex gap-2">
-              <button
-                onClick={handleOpenDonate}
-                disabled={!walletSigner}
-                className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner
-                  ? 'bg-slate-900 hover:bg-slate-800'
-                  : 'bg-slate-400 cursor-not-allowed'
-                  }`}
-              >
-                Donate
-              </button>
-              <button
-                onClick={handleMergeSelected}
-                disabled={!walletSigner || selectedContributions.size === 0}
-                className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner && selectedContributions.size > 0
-                  ? 'bg-indigo-600 hover:bg-indigo-500'
-                  : 'bg-slate-400 cursor-not-allowed'
-                  }`}
-              >
-                Merge
-              </button>
+              {project?.status !== 'Destroyed' && (
+                <>
+                  <button
+                    onClick={handleOpenDonate}
+                    disabled={!walletSigner}
+                    className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner
+                      ? 'bg-slate-900 hover:bg-slate-800'
+                      : 'bg-slate-400 cursor-not-allowed'
+                      }`}
+                  >
+                    Donate
+                  </button>
+                  <button
+                    onClick={handleMergeSelected}
+                    disabled={!walletSigner || selectedContributions.size === 0}
+                    className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner && selectedContributions.size > 0
+                      ? 'bg-indigo-600 hover:bg-indigo-500'
+                      : 'bg-slate-400 cursor-not-allowed'
+                      }`}
+                  >
+                    Merge
+                  </button>
+                </>
+              )}
               <button
                 onClick={reloadProject}
                 className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
@@ -503,7 +591,6 @@ export default function ProjectsPage() {
                   <tr>
                     <th className="px-4 py-3 font-medium">TxHash/Index</th>
                     <th className="px-4 py-3 font-medium">Amount (CKB)</th>
-                    <th className="px-4 py-3 font-medium">Deadline</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Actions</th>
                   </tr>
@@ -511,41 +598,50 @@ export default function ProjectsPage() {
                 <tbody>
                   {loadingClaims ? (
                     <tr>
-                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={5}>
+                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={4}>
                         Loading your claim cells...
                       </td>
                     </tr>
                   ) : claims.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={5}>
+                      <td className="px-4 py-6 text-center text-xs text-slate-500" colSpan={4}>
                         No claim cells found for this project.
                       </td>
                     </tr>
                   ) : (
                     claims.map((c) => {
-                      const status = c.deadline.getTime() < Date.now() ? 'Expired' : 'Active';
+                      const status = c.isLive ? (c.deadline.getTime() < Date.now() ? 'Expired' : 'Active') : 'Destroyed';
                       return (
                         <tr key={`${c.txHash}-${c.txIndex.toString()}`} className="border-t border-slate-200">
                           <td className="px-4 py-3 font-mono text-xs break-all">{c.txHash}/{c.txIndex.toString()}</td>
                           <td className="px-4 py-3">
                             {shared.shannonToCKB(c.capacity).toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">
-                            {formatDeadline(c.deadline)}
-                          </td>
                           <td className="px-4 py-3">
                             <StatusBadge text={status} />
                           </td>
-                          <td className="px-4 py-3 space-x-2">
+                          <td className="px-4 py-3">
                             {status === 'Expired' ? (
-                              <>
-                                <button className="rounded-md bg-slate-900 px-3 py-1 text-white hover:bg-slate-800">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleRefundClaim(c.txHash, c.txIndex)}
+                                  disabled={
+                                    refundingClaimTxHash === c.txHash || destroyingClaimTxHash === c.txHash
+                                  }
+                                  className="rounded-md bg-slate-900 px-3 py-1 text-white hover:bg-slate-800 disabled:opacity-60"
+                                >
                                   Refund
                                 </button>
-                                <button className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50">
-                                  Destroy Claim
+                                <button
+                                  onClick={() => handleDestroyClaim(c.txHash, c.txIndex)}
+                                  disabled={
+                                    destroyingClaimTxHash === c.txHash || refundingClaimTxHash === c.txHash
+                                  }
+                                  className="rounded-md border border-slate-300 px-3 py-1 hover:bg-slate-50 disabled:opacity-60"
+                                >
+                                  Destroy
                                 </button>
-                              </>
+                              </div>
                             ) : (
                               <span className="text-xs text-slate-400">—</span>
                             )}

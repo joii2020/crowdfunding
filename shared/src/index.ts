@@ -2,6 +2,7 @@ import { ccc, hexFrom, numFrom, Hex, Since } from "@ckb-ccc/core";
 
 export * from "./args"
 export * from "./on_chain"
+export * as dev_tool from "./dev_tool"
 
 export function shannonToCKB(amount: bigint) {
     return amount / BigInt(100000000);
