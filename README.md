@@ -1,50 +1,62 @@
-# crowdfunding
+# Crowdfunding
 
-A JavaScript project for developing smart contracts on the CKB blockchain.
+End-to-end crowdfunding dapp for CKB. It ships three on-chain scripts (Project, Contribution, Claim), shared utilities, Jest-based simulation tests, and a Next.js front-end for interacting with deployed contracts.
 
 ## Overview
 
-This project uses the CKB JavaScript VM (ckb-js-vm) to write smart contracts in typescript. The contracts are compiled to bytecode and can be deployed to the CKB blockchain.
+Contracts are written in TypeScript for the CKB JavaScript VM (ckb-js-vm) and compiled to bytecode with esbuild. The protocol flow:
+
+- Project (type script): stores creator lock hash, goal amount, deadline, and script hashes for Contribution/Claim.
+- Contribution (lock script): holds each backer’s funds; multiple cells can be merged before settlement.
+- Claim (lock script): voucher a backer receives when donating; used to refund after deadline if the goal is missed.
+
+Flows covered by tests:
+- Launch: creator creates the Project cell.
+- Contribute/merge: backers lock CKB, creator can merge Contribution cells to keep the final tx small.
+- Settle success: before the deadline and goal met, all Contribution inputs pay out to the creator.
+- Refund failure: after the deadline, backers unlock via Claim and pull capacity from Contribution cells.
 
 ## Project Structure
 
 ```
 crowdfunding/
-├── contracts/           # Smart contract source code
-│   └── hello-world/
-│       └── src/
-│           └── index.typescript # Contract implementation
-├── tests/              # Contract tests
-│   └── hello-world.test.typescript
-├── scripts/            # Build and utility scripts
-│   ├── build-all.js
-│   ├── build-contract.js
-│   └── add-contract.js
-├── dist/               # Compiled output (generated)
-│   ├── hello-world.js  # Bundled JavaScript
-│   └── hello-world.bc  # Compiled bytecode
+├── app/                        # Next.js frontend dapp
+├── artifacts/
+│   ├── dist/                   # Compiled contracts (.js/.bc)
+│   └── deployment/             # Generated deployment metadata
+├── contracts/                  # Smart contract sources
+│   ├── claim/src/index.ts
+│   ├── contribution/src/index.ts
+│   ├── project/src/index.ts
+│   └── libs/utils/             # Shared on-chain helpers
+├── examples/                   # Off-chain integration examples
+├── scripts/                    # Build/deploy utilities
+├── shared/                     # Shared TypeScript utilities for tests/app
+├── tests/                      # Contract tests and fixtures
+├── docs/                       # Design notes
 ├── package.json
-├── tsconfig.json       # TypeScript configuration
-├── tsconfig.base.json  # Base TypeScript settings
-├── jest.config.cjs     # Jest testing configuration
-└── README.md
+├── pnpm-workspace.yaml
+├── tsconfig.json               # TypeScript configuration
+├── tsconfig.base.json          # Base TypeScript settings
+└── jest.config.cjs             # Jest testing configuration
 ```
 
-## Getting Started
+## Quickstart
 
-### Prerequisites
+#### Prerequisites
 
 - Node.js (v20 or later)
 - pnpm package manager
+- ckb-debugger
 
-### Installation
+#### Installation
 
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+Install dependencies:
+```bash
+pnpm install
+```
 
-### Building Contracts
+#### Build Contracts
 
 Build all contracts:
 ```bash
@@ -53,10 +65,13 @@ pnpm run build
 
 Build a specific contract:
 ```bash
-pnpm run build:contract hello-world
+pnpm run build:contract project
 ```
 
-### Running Tests
+### Run dApp
+[See as](app/README.md)
+
+### Run Tests (simulated chain)
 
 Run all tests:
 ```bash
@@ -65,34 +80,16 @@ pnpm test
 
 Run tests for a specific contract:
 ```bash
-pnpm test -- hello-world
+pnpm test -- project
 ```
-
-### Adding New Contracts
-
-Create a new contract:
-```bash
-pnpm run add-contract my-new-contract
-```
-
-This will:
-- Create a new contract directory under `contracts/`
-- Generate a basic contract template
-- Create a corresponding test file
 
 ## Development
 
-### Contract Development
-
-1. Edit your contract in `contracts/<contract-name>/src/index.typescript`
-2. Build the contract: `pnpm run build:contract <contract-name>`
-3. Run tests: `pnpm test -- <contract-name>`
-
 ### Build Output
 
-All contracts are built to the global `dist/` directory:
-- `dist/{contract-name}.js` - Bundled JavaScript code
-- `dist/{contract-name}.bc` - Compiled bytecode for CKB execution
+All contracts are built to `artifacts/dist/`:
+- `artifacts/dist/{contract-name}.js` - Bundled JavaScript code
+- `artifacts/dist/{contract-name}.bc` - Compiled bytecode for CKB execution
 
 ### Testing
 
@@ -111,6 +108,8 @@ Tests use the `ckb-testtool` framework to simulate CKB blockchain execution. Eac
 - `deploy` - Deploy contracts to CKB network
 - `clean` - Remove all build outputs
 - `format` - Format code with Prettier
+- `example` - Build shared utils then run the integration samples in `examples/`
+- `app:dev|app:build|app:start` - Work with the Next.js front-end in `app/`
 
 ## Deployment
 
@@ -150,10 +149,19 @@ pnpm run deploy -- --network testnet --type-id --privkey 0x...
 
 ### Deployment Artifacts
 
-After successful deployment, artifacts are saved to the `deployment/` directory:
-- `deployment/scripts.json` - Contract script information
-- `deployment/<network>/<contract>/deployment.toml` - Deployment configuration
-- `deployment/<network>/<contract>/migrations/` - Migration history
+After successful deployment, artifacts are saved to `artifacts/deployment/`:
+- `artifacts/deployment/scripts.json` - Contract script information
+- `artifacts/deployment/<network>/<contract>/deployment.toml` - Deployment configuration
+- `artifacts/deployment/<network>/<contract>/migrations/` - Migration history
+
+## Front-end Dapp
+
+The `app/` directory contains a Next.js interface that talks to deployed contracts. Typical loop:
+```bash
+pnpm app:dev     # start dev server
+pnpm app:build   # production build
+pnpm app:start   # serve production build
+```
 
 ## Dependencies
 
