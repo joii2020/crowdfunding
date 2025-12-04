@@ -1,0 +1,12 @@
+{
+  "cell_recipes": [
+    {
+      "name": "ckb-js-vm",
+      "tx_hash": "0xf54b63fc2b86d9fc5991efa9a7ba515372cc338352800f771b3e7d9977958e53",
+      "index": 0,
+      "occupied_capacity": 41296800000000,
+      "data_hash": "0x615157d2091a6bc580e6ade73564417a1c02d669c252122a4026386bd3f66c15"
+    }
+  ],
+  "dep_group_recipes": []
+}

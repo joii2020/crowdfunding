@@ -1,13 +1,13 @@
 {
   "devnet": {
     "claim.bc": {
-      "codeHash": "0x0b27456dcf7e522397677b9e7efdeb3345216a188d19de5f67c65fe971c0c9dd",
+      "codeHash": "0x66cce698ae0fbe90821a96dbf823b3ed9464488c289316df59988dc0ac738bb2",
       "hashType": "data1",
       "cellDeps": [
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0x64b348b0ffea4ccf09ba1ff4085c721ceccb629461a39ba22cbb1ad959337ba0",
+              "txHash": "0x3dede214e6931323fca2234eaf884b20226261546885d91fb63c80deaa105d52",
               "index": 0
             },
             "depType": "code"
@@ -22,7 +22,7 @@
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0xab77604225ca731471e44774183ae363ffb450f8e6c4dfc367107f27d01e5b7d",
+              "txHash": "0x700fc8fe76bcb2b8a77ae8dd7ec3dab668e995a5c5b99d7affd13a93db46ec92",
               "index": 0
             },
             "depType": "code"
@@ -37,7 +37,7 @@
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0x16398a933d5561eea2793ba2cdca84466bf60668ea21db33438f46488f86b48c",
+              "txHash": "0xea5455eed19b90df1e4ee4f88f9d8ae1130db646517b0c631e01de72338fbef3",
               "index": 0
             },
             "depType": "code"
