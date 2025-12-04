@@ -56,7 +56,9 @@ export function sinceToDate(since: Since): Date {
     return new Date(ms);
 }
 
-export function getCellByJsType(client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType): AsyncGenerator<ccc.Cell, any, any> {
+export function getCellByJsType(
+    client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType
+): AsyncGenerator<ccc.Cell, any, any> {
     if (hashType == undefined) {
         hashType = "data1";
     }

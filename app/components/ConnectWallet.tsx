@@ -12,26 +12,46 @@ const ConnectWallet: React.FC = () => {
   const signer = ccc.useSigner();
 
   useEffect(() => {
-    if (!window) {
-      return
-    }
+    let canceled = false;
 
-    if (!signer) {
-      return;
-    }
+    const loadWalletInfo = async () => {
+      if (!signer) {
+        setBalance("");
+        setAddress("");
+        return;
+      }
 
-    (async () => {
-      const addr = await signer.getRecommendedAddress();
-      setAddress(addr);
-    })();
+      try {
+        const [addr, addressObjs] = await Promise.all([
+          signer.getRecommendedAddress(),
+          signer.getAddressObjs(),
+        ]);
 
-    (async () => {
-      const capacity = await signer.getBalance();
-      setBalance(ccc.fixedPointToString(capacity));
-    })();
+        let totalCapacity = 0n;
+        for (const { script } of addressObjs) {
+          // Fetch full capacity for the lock script to avoid missing cells with data/type scripts.
+          const capacity = await signer.client.getCellsCapacity({
+            script,
+            scriptType: "lock",
+            scriptSearchMode: "exact",
+          });
+          totalCapacity += capacity;
+        }
+
+        if (canceled) return;
+        setAddress(addr);
+        setBalance(ccc.fixedPointToString(totalCapacity));
+      } catch (error) {
+        console.warn("Failed to load wallet info", error);
+        if (canceled) return;
+        setBalance("--");
+      }
+    };
+
+    void loadWalletInfo();
 
     return () => {
-
+      canceled = true;
     };
   }, [signer]);
 

@@ -233,17 +233,17 @@ export default function Home() {
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-10">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">CKB Crowdfunding Demo</p>
+            <p className="text-sm text-muted-foreground">CKB Crowdfunding</p>
             <h1 className="text-3xl font-bold">Projects</h1>
             <p className="text-xs text-muted-foreground mt-1">
               Network: <span className="font-mono">{network}</span>
             </p>
-            {
+            {!walletSigner && (
               <p className="mt-1 text-xs text-amber-700">
                 Wallet not connected; using a random signer for public project data. Will refresh
                 after you connect.
               </p>
-            }
+            )}
           </div>
           <div className="flex items-center gap-3">
             <ConnectWallet />
@@ -269,7 +269,7 @@ export default function Home() {
           <div>
             <p className="text-lg font-semibold">Create a new project</p>
             <p className="text-sm text-muted-foreground">
-              Goal amount, deadline, creator lock will be filled here (demo only).
+              Goal amount, deadline, creator lock will be filled here.
             </p>
           </div>
           <button
@@ -288,7 +288,6 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">All Projects</h2>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <p>Owner/Destroy buttons are mocked for layout only.</p>
               <button
                 onClick={() => loadProjects(true)}
                 className="rounded-full border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50"
@@ -511,7 +510,6 @@ export default function Home() {
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>Submit is not wired on-chain yet; it only collects parameters for now.</span>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"

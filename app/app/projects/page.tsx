@@ -408,11 +408,12 @@ export default function ProjectsPage() {
               <p className="text-xs text-muted-foreground">
                 TxIndex: <span className="font-mono">{txIndexParam ?? 'Add txIndex in the URL'}</span>
               </p>
-              {
+              {!walletSigner && (
                 <p className="mt-1 text-xs text-amber-700">
-                  Wallet not connected; using a random signer to read chain data.
+                  Wallet not connected; using a random signer for public project data. Will refresh
+                  after you connect.
                 </p>
-              }
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -708,7 +709,6 @@ export default function ProjectsPage() {
               )}
 
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span>Confirm will trigger the on-chain donation logic later.</span>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"

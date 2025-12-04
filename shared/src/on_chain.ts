@@ -1,4 +1,4 @@
-import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, bytesFrom, numBeToBytes, CellOutputLike, numLeFromBytes, } from "@ckb-ccc/core"
+import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, bytesFrom, numBeToBytes, CellOutputLike, numLeFromBytes, hashTypeFrom, } from "@ckb-ccc/core"
 import * as shared from "./index"
 
 import scripts from "artifacts/deployment/scripts.json";
@@ -58,8 +58,11 @@ export class PrjectCellInfo {
     }
 
     static async getAll(client: ccc.Client): Promise<PrjectCellInfo[]> {
-        let cells = shared.getCellByJsType(client, hexFrom(scripts.devnet["project.bc"].codeHash));
+        let cells = shared.getCellByJsType(client,
+            hexFrom(scripts.devnet["project.bc"].codeHash),
+            hashTypeFrom(scripts.devnet["project.bc"].hashType));
 
+        console.log(`1111`);
         let infos: PrjectCellInfo[] = [];
         for await (const cell of cells) {
             const info = await this.newByCell(client, cell, true);
