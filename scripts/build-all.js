@@ -39,4 +39,53 @@ function buildAllContracts() {
   console.log(`\n🎉 All contracts built successfully!`);
 }
 
+function getLatestMtime(dir) {
+  const queue = [dir];
+  let latest = 0;
+
+  while (queue.length) {
+    const current = queue.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      const stat = fs.statSync(fullPath);
+      if (entry.isDirectory()) {
+        queue.push(fullPath);
+      } else {
+        latest = Math.max(latest, stat.mtimeMs);
+      }
+    }
+  }
+
+  return latest;
+}
+
+function buildShared() {
+  const sharedDir = path.join(process.cwd(), 'shared');
+  if (!fs.existsSync(sharedDir)) {
+    return;
+  }
+
+  const srcDir = path.join(sharedDir, 'src');
+  const distEntry = path.join(sharedDir, 'dist', 'index.js');
+
+  const distMtime = fs.existsSync(distEntry) ? fs.statSync(distEntry).mtimeMs : 0;
+  const srcNewest = fs.existsSync(srcDir) ? getLatestMtime(srcDir) : 0;
+
+  if (distMtime && srcNewest <= distMtime) {
+    console.log('\n⏩ Shared package is up to date, skipping build.');
+    return;
+  }
+
+  console.log('\n🧩 Building shared package needed by the app...');
+  try {
+    execSync('pnpm --filter shared run build', { stdio: 'inherit' });
+    console.log('✅ Successfully built shared package.');
+  } catch (error) {
+    console.error('❌ Failed to build shared package.');
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
 buildAllContracts();
+buildShared();
