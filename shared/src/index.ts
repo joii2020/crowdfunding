@@ -60,12 +60,12 @@ export function getCellByJsType(client: ccc.Client, codeHash: Hex, hashType?: cc
     if (hashType == undefined) {
         hashType = "data1";
     }
-    const scriptsPatch = require("artifacts/deployment-patch/scripts_patch.json");
+    const systemScript = require("artifacts/deployment/system-scripts.json")
     return client.findCells(
         {
             script: {
-                codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
-                hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
+                codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
+                hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
                 args: hexFrom(
                     "0x0000" +
                     codeHash.slice(2) +
@@ -80,12 +80,12 @@ export function getCellByLock(client: ccc.Client, codeHash: Hex, hashType?: ccc.
     if (hashType == undefined) {
         hashType = "data1";
     }
-    const scriptsPatch = require("artifacts/deployment-patch/scripts_patch.json");
+    const systemScript = require("artifacts/deployment/system-scripts.json")
     return client.findCells(
         {
             script: {
-                codeHash: scriptsPatch.devnet["ckb-js-vm"].codeHash,
-                hashType: scriptsPatch.devnet["ckb-js-vm"].hashType,
+                codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
+                hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
                 args: hexFrom(
                     "0x0000" +
                     codeHash.slice(2) +

@@ -5,9 +5,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "all": "pnpm run-simple:success && pnpm run-simple:timeout",
+    "all": "pnpm run-simple:success",
     "run-simple:success": "tsx src/simple-success.ts",
-    "run-simple:timeout": "tsx src/simple-timeout.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [],

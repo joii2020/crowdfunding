@@ -2,12 +2,12 @@
   "devnet": {
     "claim.bc": {
       "codeHash": "0x66cce698ae0fbe90821a96dbf823b3ed9464488c289316df59988dc0ac738bb2",
-      "hashType": "data1",
+      "hashType": "data2",
       "cellDeps": [
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0x3dede214e6931323fca2234eaf884b20226261546885d91fb63c80deaa105d52",
+              "txHash": "0x66653aff0b7a5f2ce897374a222029fb5e350a81d4e5179b0d0cfe7a3907cbdf",
               "index": 0
             },
             "depType": "code"
@@ -17,12 +17,12 @@
     },
     "contribution.bc": {
       "codeHash": "0x8371fddfa86bc4d87b9a3d86b997a03498343ac4fd6b42e3c4fa4c4b765a231b",
-      "hashType": "data1",
+      "hashType": "data2",
       "cellDeps": [
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0x700fc8fe76bcb2b8a77ae8dd7ec3dab668e995a5c5b99d7affd13a93db46ec92",
+              "txHash": "0xe11299f1fe3f98f0fad693ba635833079c465f0d9b8afcba01bfabf0555a6c08",
               "index": 0
             },
             "depType": "code"
@@ -32,12 +32,12 @@
     },
     "project.bc": {
       "codeHash": "0xfb3fff95a1b214d1176f2a21f962d596243380fdb03359948f3cb4d61d41b6e1",
-      "hashType": "data1",
+      "hashType": "data2",
       "cellDeps": [
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0xea5455eed19b90df1e4ee4f88f9d8ae1130db646517b0c631e01de72338fbef3",
+              "txHash": "0x3243ed7b4c98bd6857848fa22032d1a4a0baf2860416d788d265c9bb45e0d321",
               "index": 0
             },
             "depType": "code"
