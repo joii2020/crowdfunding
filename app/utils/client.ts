@@ -4,19 +4,17 @@ import systemScripts from "artifacts/deployment/system-scripts.json";
 const DEFAULT_TESTNET_SCRIPTS = new ccc.ClientPublicTestnet()
   .scripts as Record<KnownScript, KnownScriptType>;
 
-export const buildClient = (network: 'devnet' | 'testnet' | 'mainnet') => {
+export const buildClient = (network: NetworkType) => {
   switch (network) {
-    case 'devnet':
+    case "devnet":
       return new ccc.ClientPublicTestnet({
-        url: 'http://localhost:28114', // the url from offckb devnet
-        scripts: {
-          ...DEFAULT_TESTNET_SCRIPTS,
-          ...DEVNET_SCRIPTS,
-        },
+        url: "http://localhost:28114", // the url from offckb devnet
+        fallbacks: ["http://127.0.0.1:8114"], // devnet fallback
+        scripts: DEVNET_SCRIPTS,
       });
-    case 'testnet':
+    case "testnet":
       return new ccc.ClientPublicTestnet();
-    case 'mainnet':
+    case "mainnet":
       return new ccc.ClientPublicMainnet();
 
     default:
