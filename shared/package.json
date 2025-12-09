@@ -13,5 +13,8 @@
   "packageManager": "pnpm@10.17.1",
   "dependencies": {
     "@ckb-ccc/core": "1.12.2"
+  },
+  "devDependency": {
+    "typescript": "~5.8.2"
   }
 }

@@ -1,20 +1,4 @@
 import { Hex } from "@ckb-ccc/connector-react";
-import systemScripts from "artifacts/deployment/system-scripts.json";
-import scripts from "artifacts/deployment/scripts.json";
-import { NetworkType } from "./client";
-
-export const getContractConfig = (network: NetworkType): ContractConfig => {
-  const system = systemScripts as SystemScriptsConfig;
-  const contracts = scripts as ScriptsConfig;
-
-  return {
-    ckbJsVmScript: system[network]["ckb_js_vm"].script,
-    claimScript: contracts[network]["claim.bc"],
-    contributionScript: contracts[network]["contribution.bc"],
-    projectScript: contracts[network]["project.bc"],
-    
-  };
-};
 
 interface CellDep {
   outPoint: { txHash: Hex; index: number };

@@ -1,16 +1,9 @@
 import { ccc, hexFrom, Hex, Since, } from "@ckb-ccc/core";
-import { zeroHash, joinHex, sinceFromDate } from "./index"
+import { joinHex, sinceFromDate, newSince } from "./index"
 
-function getExpirationTime(): Date {
-    let d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d;
-}
 
-function newDate(offsetDay: number): Date {
-    let d = new Date();
-    d.setDate(d.getDate() + offsetDay);
-    return d;
+function zeroHash(): Hex {
+    return hexFrom(new Uint8Array(32));
 }
 
 function toSince(d: Date | Since): Since {
@@ -26,7 +19,7 @@ export class ProjectArgs {
         public typeID: Hex = zeroHash(),
         public creatorLockScriptHash: Hex = zeroHash(),
         public goalAmount: bigint = BigInt(0),
-        public deadline: Date | Since = newDate(100),
+        public deadline: Since = newSince(60),
         public contributionScript = hexFrom(new Uint8Array(33)),
         public claimScript = hexFrom(new Uint8Array(33)),
         public contributionType: Hex = zeroHash(),
@@ -76,16 +69,12 @@ export class ProjectArgs {
             this.contributionType,
         );
     }
-
-    setExpirationTime() {
-        this.deadline = getExpirationTime();
-    }
 }
 
 export class ContributionArgs {
     constructor(
         public projectScript: Hex = zeroHash(),
-        public deadline: Date | Since = newDate(100),
+        public deadline: Since = newSince(60),
         public claimScript: Hex = hexFrom(new Uint8Array(33))
     ) { }
 
@@ -98,16 +87,12 @@ export class ContributionArgs {
             this.claimScript,
         );
     }
-
-    setExpirationTime() {
-        this.deadline = getExpirationTime();
-    }
 }
 
 export class ClaimArgs {
     constructor(
         public projectScript: Hex = zeroHash(),
-        public deadline: Date | Since = newDate(100),
+        public deadline: Since = newSince(60),
         public backerLockScript: Hex = zeroHash(),
     ) { }
 
@@ -141,9 +126,5 @@ export class ClaimArgs {
             ),
             this.backerLockScript,
         )
-    }
-
-    setExpirationTime() {
-        this.deadline = getExpirationTime();
     }
 }

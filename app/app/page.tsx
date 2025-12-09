@@ -5,8 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
-import { getContractConfig } from '@/utils/config';
-import { buildClient, getNetwork } from '@/utils/client';
+import { buildClient } from '@/utils/client';
 import * as shared from 'shared';
 
 function StatusBadge({ text }: { text: string }) {
@@ -41,16 +40,16 @@ const getDefaultDeadlineInput = () => {
 };
 
 const projectCache: {
-  data: shared.PrjectCellInfo[] | null;
+  data: shared.ProjectCellInfo[] | null;
   updating: boolean;
 } = {
   data: null,
   updating: false,
 };
 
-const preferredClient = buildClient(getNetwork());
+const preferredClient = buildClient(shared.getNetwork());
 
-type ProjectListItem = shared.PrjectCellInfo & { owner?: boolean };
+type ProjectListItem = shared.ProjectCellInfo & { owner?: boolean };
 
 const fetchProjects = async (client: ccc.Client, forceRefresh = false) => {
   if (forceRefresh) {
@@ -65,7 +64,7 @@ const fetchProjects = async (client: ccc.Client, forceRefresh = false) => {
   projectCache.updating = true;
 
   const clientForNetwork = client.url === preferredClient.url ? client : preferredClient;
-  const data = await shared.PrjectCellInfo.getAll(clientForNetwork);
+  const data = await shared.ProjectCellInfo.getAll(clientForNetwork);
   if (data.length != 0)
     projectCache.data = data;
 
@@ -80,9 +79,7 @@ declare global {
 }
 
 export default function Home() {
-  const network = getNetwork();
-  const { claimScript, contributionScript, projectScript } = getContractConfig(network);
-
+  const network = shared.getNetwork();
   const walletSigner = useSigner();
 
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
@@ -95,6 +92,7 @@ export default function Home() {
   const [claims, setClaims] = useState<shared.ClaimCellInfo[]>([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const context = useCcc();
 
@@ -137,7 +135,7 @@ export default function Home() {
         : infos;
 
       const ownerWeight = (p: ProjectListItem) => (p.owner ? 0 : 1);
-      const statusWeight = (p: shared.PrjectCellInfo) => (p.status === 'ReadyFinish' ? 0 : 1);
+      const statusWeight = (p: shared.ProjectCellInfo) => (p.status === 'ReadyFinish' ? 0 : 1);
 
       const sorted = infosWithOwner
         .map((p, idx) => ({ p, idx }))
@@ -206,26 +204,40 @@ export default function Home() {
     setGoalAmount('');
     setDeadlineInput(getDefaultDeadlineInput());
     setDescription('');
+    setActionError(null);
     setShowCreateModal(true);
   };
 
+  const handleCloseCreate = () => {
+    setShowCreateModal(false);
+    setActionError(null);
+  };
+
   const handleCreateProject = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
+    async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+      setActionError(null);
       const goal = goalAmount ? BigInt(goalAmount) : BigInt(0);
       const deadline = new Date(deadlineInput);
 
       const activeSigner =
         walletSigner as unknown as ccc.SignerCkbPrivateKey | undefined;
       if (activeSigner == undefined) {
-        alert('Please connect your wallet to create a project.');
-      } else {
-        shared.createCrowfunding(activeSigner, goal, deadline, description);
+        setActionError('Please connect your wallet to create a project.');
+        return;
       }
 
-      setShowCreateModal(false);
+      try {
+        await shared.createCrowfunding(activeSigner, goal, deadline, description);
+        setShowCreateModal(false);
+        await loadProjects(true);
+      } catch (error) {
+        console.error('Failed to create project', error);
+        const message = error instanceof Error ? error.message : 'Failed to create project';
+        setActionError(message);
+      }
     },
-    [deadlineInput, description, goalAmount],
+    [deadlineInput, description, goalAmount, loadProjects, walletSigner],
   );
 
   return (
@@ -253,15 +265,15 @@ export default function Home() {
         <section className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Project Script</p>
-            <p className="break-all font-mono text-xs">{projectScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.projectScript?.codeHash}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Contribution Script</p>
-            <p className="break-all font-mono text-xs">{contributionScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.contributionScript?.codeHash}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Claim Script</p>
-            <p className="break-all font-mono text-xs">{claimScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.claimScript?.codeHash}</p>
           </div>
         </section>
 
@@ -450,13 +462,19 @@ export default function Home() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCloseCreate}
                   className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                   aria-label="Close"
                 >
                   ✕
                 </button>
               </div>
+
+              {actionError && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700" role="alert">
+                  {actionError}
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-800" htmlFor="goalAmount">
@@ -513,7 +531,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowCreateModal(false)}
+                    onClick={handleCloseCreate}
                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
                   >
                     Cancel

@@ -23,7 +23,7 @@ async function donation(signer: ccc.SignerCkbPrivateKey, projectTx: OutPoint, ck
 
 async function mergeDonation(signer: ccc.SignerCkbPrivateKey, projectTx: OutPoint, waitSuc?: boolean): Promise<Hex> {
 
-  const projectInfo = await shared.PrjectCellInfo.getByTxHash(signer.client, projectTx);
+  const projectInfo = await shared.ProjectCellInfo.getByTxHash(signer.client, projectTx);
 
   let txHash = await shared.mergeDonation(
     signer, projectInfo.tx, projectInfo.contributionInfo);

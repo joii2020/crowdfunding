@@ -6,11 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc, hexFrom, Hex, OutPoint } from '@ckb-ccc/core';
 import ConnectWallet from '@/components/ConnectWallet';
-import { getNetwork, buildClient } from '@/utils/client';
+import { buildClient } from '@/utils/client';
 import * as shared from 'shared';
 
 type ProjectDetailCacheEntry = {
-  data: shared.PrjectCellInfo | null;
+  data: shared.ProjectCellInfo | null;
   updating: boolean;
 };
 
@@ -40,7 +40,7 @@ const formatDeadline = (deadline?: Date) =>
   }) ?? '—';
 
 const projectDetailCache: Record<string, ProjectDetailCacheEntry> = {};
-const preferredClient = buildClient(getNetwork());
+const preferredClient = buildClient(shared.getNetwork());
 
 const getProjectKey = (tx: OutPoint) => `${tx.txHash}-${tx.index.toString()}`;
 
@@ -62,7 +62,7 @@ const fetchProjectByTx = async (
 
   cache.updating = true;
   const clientForNetwork = client && client.url === preferredClient.url ? client : preferredClient;
-  cache.data = await shared.PrjectCellInfo.getByTxHash(clientForNetwork, tx);
+  cache.data = await shared.ProjectCellInfo.getByTxHash(clientForNetwork, tx);
   cache.updating = false;
 
   return cache.data;
@@ -71,7 +71,7 @@ const fetchProjectByTx = async (
 const getContributionKey = (c: shared.ContributionCellInfo) => `${c.tx.txHash}-${c.tx.index}`;
 
 export default function ProjectsPage() {
-  const network = getNetwork();
+  const network = shared.getNetwork();
   const searchParams = useSearchParams();
   const txHashParam = searchParams.get('txHash');
   const txIndexParam = searchParams.get('txIndex');
@@ -101,7 +101,7 @@ export default function ProjectsPage() {
   }
   const txHash = hexFrom(txHashParam);
 
-  const [project, setProject] = useState<shared.PrjectCellInfo | null>(null);
+  const [project, setProject] = useState<shared.ProjectCellInfo | null>(null);
   const [contributionCells, setContributionCells] = useState<shared.ContributionCellInfo[]>([]);
   const [loadingProject, setLoadingProject] = useState(false);
   const [claims, setClaims] = useState<shared.ClaimCellInfo[]>([]);
@@ -410,8 +410,7 @@ export default function ProjectsPage() {
               </p>
               {!walletSigner && (
                 <p className="mt-1 text-xs text-amber-700">
-                  Wallet not connected; using a random signer for public project data. Will refresh
-                  after you connect.
+                  Wallet not connected.
                 </p>
               )}
             </div>

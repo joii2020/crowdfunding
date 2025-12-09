@@ -1,5 +1,6 @@
 import { ccc, CellDepInfoLike, KnownScript, Script } from '@ckb-ccc/core';
 import systemScripts from "artifacts/deployment/system-scripts.json";
+import { NetworkType } from 'shared';
 
 const DEFAULT_TESTNET_SCRIPTS = new ccc.ClientPublicTestnet()
   .scripts as Record<KnownScript, KnownScriptType>;
@@ -37,16 +38,4 @@ export const DEVNET_SCRIPTS: Record<string, KnownScriptType> = {
   [KnownScript.OmniLock]: systemScripts.devnet.omnilock!
     .script as KnownScriptType,
   [KnownScript.XUdt]: systemScripts.devnet.xudt!.script as KnownScriptType,
-};
-export type NetworkType = "devnet" | "testnet" | "mainnet";
-
-export const getNetwork = (): NetworkType => {
-  const network = process.env.NEXT_PUBLIC_CKB_NETWORK;
-
-  if (network === "devnet" || network === "testnet" || network === "mainnet") {
-    return network;
-  }
-
-  // Default to devnet if not specified or invalid
-  return "devnet";
 };

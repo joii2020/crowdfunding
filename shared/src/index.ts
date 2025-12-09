@@ -1,8 +1,13 @@
-import { ccc, hexFrom, numFrom, Hex, Since } from "@ckb-ccc/core";
+import { hexFrom, numFrom, Hex, Since } from "@ckb-ccc/core";
+
+import scripts from "artifacts/deployment/scripts.json";
+import systemScripts from "artifacts/deployment/system-scripts.json"
+import { match } from "assert";
 
 export * from "./args"
-export * from "./on_chain"
-export * as dev_tool from "./dev_tool"
+export * from "./chainState"
+export * from "./crowdfundingActions"
+export * as dev_tool from "./devTools"
 
 export function shannonToCKB(amount: bigint) {
     return amount / BigInt(100000000);
@@ -19,10 +24,7 @@ export function joinHex(a: Hex, b: Hex, ...rest: Hex[]): Hex {
     return hexFrom(result);
 }
 
-export function zeroHash(): Hex {
-    return hexFrom(new Uint8Array(32));
-}
-
+// since
 export function sinceFromDate(date: Date): Since {
     const ms = date.getTime();
     if (!Number.isFinite(ms)) {
@@ -56,45 +58,43 @@ export function sinceToDate(since: Since): Date {
     return new Date(ms);
 }
 
-export function getCellByJsType(
-    client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType
-): AsyncGenerator<ccc.Cell, any, any> {
-    if (hashType == undefined) {
-        hashType = "data1";
-    }
-    const systemScript = require("artifacts/deployment/system-scripts.json")
-    return client.findCells(
-        {
-            script: {
-                codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
-                hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
-                args: hexFrom(
-                    "0x0000" +
-                    codeHash.slice(2) +
-                    hexFrom(ccc.hashTypeToBytes(hashType)).slice(2))
-            },
-            scriptType: "type",
-            scriptSearchMode: "prefix",
-        });
+export function newSince(offsetMin: number): Since {
+    return sinceFromDate(new Date(Date.now() + offsetMin * 60_000));
 }
 
-export function getCellByLock(client: ccc.Client, codeHash: Hex, hashType?: ccc.HashType): AsyncGenerator<ccc.Cell, any, any> {
-    if (hashType == undefined) {
-        hashType = "data1";
-    }
-    const systemScript = require("artifacts/deployment/system-scripts.json")
-    return client.findCells(
-        {
-            script: {
-                codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
-                hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
-                args: hexFrom(
-                    "0x0000" +
-                    codeHash.slice(2) +
-                    hexFrom(ccc.hashTypeToBytes(hashType)).slice(2))
-            },
-            scriptType: "lock",
-            scriptSearchMode: "prefix",
-        });
-}
+export type NetworkType = "devnet" | "testnet" | "mainnet";
+export const getNetwork = (): NetworkType => {
+    const network = process.env.NEXT_PUBLIC_CKB_NETWORK;
 
+    if (network === "devnet" || network === "testnet" || network === "mainnet") {
+        return network;
+    }
+    return "devnet";
+};
+export const ckbJsVmScript = (() => {
+    const network = getNetwork();
+    if (network === "devnet")
+        return systemScripts.devnet["ckb_js_vm"].script;
+    else if (network === "testnet")
+        return systemScripts.testnet["ckb_js_vm"].script;
+    else (network === "mainnet")
+    throw Error(`mainnet has not yet been deployed`);
+})();
+export const projectScript = (() => {
+    if (getNetwork() === "devnet")
+        return scripts.devnet["project.bc"]
+    else
+        throw Error(`maintnet and testnet has not yet been deployed`)
+})();
+export const contributionScript = (() => {
+    if (getNetwork() === "devnet")
+        return scripts.devnet["contribution.bc"]
+    else
+        throw Error(`maintnet and testnet has not yet been deployed`)
+})();
+export const claimScript = (() => {
+    if (getNetwork() === "devnet")
+        return scripts.devnet["claim.bc"]
+    else
+        throw Error(`maintnet and testnet has not yet been deployed`)
+})();

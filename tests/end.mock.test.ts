@@ -1,6 +1,6 @@
 import { hexFrom, Transaction, hashCkb, hashTypeToBytes, numLeToBytes } from "@ckb-ccc/core";
 import { Resource, Verifier, } from "ckb-testtool";
-import { CKBToShannon } from "shared";
+import { CKBToShannon, newSince } from "shared";
 
 import { TxHelper, generateRandHash } from "./tx-helper.mock";
 import { ProjectArgs, ContributionArgs, ClaimArgs, joinHex } from "shared"
@@ -82,7 +82,7 @@ async function destroyProject() {
 
     let prjArgs = new ProjectArgs();
     prjArgs.typeID = generateRandHash();
-    prjArgs.setExpirationTime();
+    prjArgs.deadline = newSince(-6000);
     const prjScript = helper.createJsScript(scriptProject, prjArgs.toBytes());
 
     const input = helper.resource.mockCell(defLock, prjScript);
@@ -113,7 +113,7 @@ async function destroyClaim() {
     const defLock = helper.createAlwaySuc("def");
 
     let claimArgs = new ClaimArgs();
-    claimArgs.setExpirationTime();
+    claimArgs.deadline = newSince(-6000);
     const claimScript = helper.createJsScript(scriptClaim, claimArgs.toBytes());
 
     const input = helper.resource.mockCell(defLock, claimScript, hexFrom(numLeToBytes(CKBToShannon(200n), 16)));
@@ -144,7 +144,7 @@ async function refund() {
     const defLock = helper.createAlwaySuc("def");
 
     let contributionArgs = new ContributionArgs();
-    contributionArgs.setExpirationTime();
+    contributionArgs.deadline = newSince(-6000);
 
     let claimArgs = new ClaimArgs();
     claimArgs.deadline = contributionArgs.deadline;
