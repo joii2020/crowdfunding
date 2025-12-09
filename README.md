@@ -41,7 +41,7 @@ crowdfunding/
 └── jest.config.cjs             # Jest testing configuration
 ```
 
-## Quickstart
+## Quickstart By CKB devnet
 
 #### Prerequisites
 
@@ -49,18 +49,13 @@ crowdfunding/
 - pnpm package manager
 - ckb-debugger
 
-#### Installation
+#### Build
 
-Install dependencies:
+Build all and deploy
 ```bash
 pnpm install
-```
-
-#### Build Contracts
-
-Build all contracts:
-```bash
 pnpm run build
+pnpm run deploy
 ```
 
 Build a specific contract:
@@ -68,19 +63,25 @@ Build a specific contract:
 pnpm run build:contract project
 ```
 
-### Run dApp
+Run Example
+```bash
+pnpm run example
+```
+This runs a full happy-path crowdfunding flow on devnet: create a project, accept donations, merge funds, and finalize the campaign.
+
+#### Run dApp
+
+Run dApp
 [See as](app/README.md)
+```bash
+pnpm run app:dev
+```
 
 ### Run Tests (simulated chain)
 
 Run all tests:
 ```bash
 pnpm test
-```
-
-Run tests for a specific contract:
-```bash
-pnpm test -- project
 ```
 
 ## Development
