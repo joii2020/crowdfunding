@@ -220,12 +220,11 @@ function getCellByJsType(
     if (hashType == undefined) {
         hashType = "data1";
     }
-    const systemScript = require("artifacts/deployment/system-scripts.json")
     return client.findCells(
         {
             script: {
-                codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
-                hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
+                codeHash: shared.ckbJsVmScript().codeHash,
+                hashType: shared.ckbJsVmScript().hashType,
                 args: hexFrom(
                     "0x0000" +
                     codeHash.slice(2) +

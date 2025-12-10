@@ -2,28 +2,21 @@ import { ccc, hexFrom, hashTypeToBytes, Hex, Cell, OutPoint, bytesFrom, CellOutp
 import * as shared from "./index"
 import { sendTx } from "./sendTx";
 
-import scripts from "artifacts/deployment/scripts.json";
-import systemScript from "artifacts/deployment/system-scripts.json"
-
 async function getProjectByTx(client: ccc.Client, txHash: Hex): Promise<OutPoint> {
     let tx = await client.getTransaction(txHash);
     if (tx == undefined)
         throw Error(`Unknow TxHash: ${txHash}`);
-
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const jsCode = scripts.devnet["project.bc"];
-
     let index: bigint | undefined = undefined;
     for (let i = 0; i < tx.transaction.outputs.length; i++) {
         const typeScript = tx.transaction.outputs[i].type;
         if (typeScript == undefined)
             continue;
-        if (typeScript.codeHash != ckbJsVmScript.script.codeHash || typeScript.hashType! != ckbJsVmScript.script.hashType)
+        if (typeScript.codeHash != shared.ckbJsVmScript().codeHash || typeScript.hashType! != shared.ckbJsVmScript().hashType)
             continue;
 
         const jsScript = bytesFrom(typeScript.args).slice(2, 35);
-        if (hexFrom(jsScript) == shared.joinHex(hexFrom(jsCode.codeHash),
-            hexFrom(hashTypeToBytes(jsCode.hashType)))
+        if (hexFrom(jsScript) == shared.joinHex(hexFrom(shared.projectScript().codeHash),
+            hexFrom(hashTypeToBytes(shared.projectScript().hashType)))
         ) {
             index = BigInt(i);
             break;
@@ -40,20 +33,17 @@ async function getClaimByTx(client: ccc.Client, txHash: Hex): Promise<OutPoint> 
     if (tx == undefined)
         throw Error(`Unknow TxHash: ${txHash}`);
 
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const jsCode = scripts.devnet["claim.bc"];
-
     let index: bigint | undefined = undefined;
     for (let i = 0; i < tx.transaction.outputs.length; i++) {
         const typeScript = tx.transaction.outputs[i].type;
         if (typeScript == undefined)
             continue;
-        if (typeScript.codeHash != ckbJsVmScript.script.codeHash || typeScript.hashType! != ckbJsVmScript.script.hashType)
+        if (typeScript.codeHash != shared.ckbJsVmScript().codeHash || typeScript.hashType! != shared.ckbJsVmScript().hashType)
             continue;
 
         const jsScript = bytesFrom(typeScript.args).slice(2, 35);
-        if (hexFrom(jsScript) == shared.joinHex(hexFrom(jsCode.codeHash),
-            hexFrom(hashTypeToBytes(jsCode.hashType)))
+        if (hexFrom(jsScript) == shared.joinHex(hexFrom(shared.claimScript().codeHash),
+            hexFrom(hashTypeToBytes(shared.claimScript().hashType)))
         ) {
             index = BigInt(i);
             break;
@@ -73,26 +63,20 @@ export async function createCrowfunding(
 ): Promise<OutPoint> {
     const signerLock = (await signer.getRecommendedAddressObj()).script;
 
-    // todo 
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const projectJsCode = scripts.devnet["project.bc"];
-    const contributionJsCode = scripts.devnet["contribution.bc"];
-    const claimJsCode = scripts.devnet["claim.bc"];
-
     let prjArgs = new shared.ProjectArgs();
     prjArgs.creatorLockScriptHash = signerLock.hash();
     prjArgs.goalAmount = shared.CKBToShannon(goal);
     prjArgs.contributionScript =
-        hexFrom(contributionJsCode.codeHash + hexFrom(hashTypeToBytes(contributionJsCode.hashType)).slice(2));
-    prjArgs.claimScript = hexFrom(claimJsCode.codeHash + hexFrom(hashTypeToBytes(claimJsCode.hashType)).slice(2));
+        hexFrom(shared.contributionScript().codeHash + hexFrom(hashTypeToBytes(shared.contributionScript().hashType)).slice(2));
+    prjArgs.claimScript = hexFrom(shared.claimScript().codeHash + hexFrom(hashTypeToBytes(shared.claimScript().hashType)).slice(2));
     prjArgs.deadline = shared.sinceFromDate(deadline);
     const prjScript = {
-        codeHash: ckbJsVmScript.script.codeHash,
-        hashType: ckbJsVmScript.script.hashType,
+        codeHash: shared.ckbJsVmScript().codeHash,
+        hashType: shared.ckbJsVmScript().hashType,
         args: hexFrom(
             "0x0000" +
-            projectJsCode.codeHash.slice(2) +
-            hexFrom(hashTypeToBytes(projectJsCode.hashType)).slice(2) +
+            shared.projectScript().codeHash.slice(2) +
+            hexFrom(hashTypeToBytes(shared.projectScript().hashType)).slice(2) +
             hexFrom(prjArgs.toBytes()).slice(2),
         ),
     };
@@ -113,8 +97,8 @@ export async function createCrowfunding(
             hexFrom(Buffer.from(description.toString(), "utf8")),
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...projectJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.projectScript().cellDeps.map((c) => c.cellDep),
         ],
     });
 
@@ -125,10 +109,6 @@ export async function createCrowfunding(
 export async function donationToProject(
     signer: ccc.SignerCkbPrivateKey, amount: bigint, projectTx: OutPoint
 ): Promise<Hex> {
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const contributionJsCode = scripts.devnet["contribution.bc"];
-    const claimJsCode = scripts.devnet["claim.bc"];
-
     const projectCell = await getCellByTxHash(signer.client, projectTx);
     const projectScript = projectCell.cell?.cellOutput.type!;
     const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
@@ -140,12 +120,12 @@ export async function donationToProject(
 
     const outputCapacity = shared.CKBToShannon(amount);
     const contributionScript = {
-        codeHash: ckbJsVmScript.script.codeHash,
-        hashType: ckbJsVmScript.script.hashType,
+        codeHash: shared.ckbJsVmScript().codeHash,
+        hashType: shared.ckbJsVmScript().hashType,
         args: hexFrom(
             "0x0000" +
-            contributionJsCode.codeHash.slice(2) +
-            hexFrom(hashTypeToBytes(contributionJsCode.hashType)).slice(2) +
+            shared.contributionScript().codeHash.slice(2) +
+            hexFrom(hashTypeToBytes(shared.contributionScript().hashType)).slice(2) +
             hexFrom(contributionArgs.toBytes()).slice(2),
         ),
     };
@@ -157,12 +137,12 @@ export async function donationToProject(
     claimArgs.backerLockScript = usersLock.hash();
 
     const claimScript = {
-        codeHash: ckbJsVmScript.script.codeHash,
-        hashType: ckbJsVmScript.script.hashType,
+        codeHash: shared.ckbJsVmScript().codeHash,
+        hashType: shared.ckbJsVmScript().hashType,
         args: hexFrom(
             "0x0000" +
-            claimJsCode.codeHash.slice(2) +
-            hexFrom(hashTypeToBytes(claimJsCode.hashType)).slice(2) +
+            shared.claimScript().codeHash.slice(2) +
+            hexFrom(hashTypeToBytes(shared.claimScript().hashType)).slice(2) +
             hexFrom(claimArgs.toBytes()).slice(2),
         ),
     };
@@ -184,9 +164,9 @@ export async function donationToProject(
             ccc.numLeToBytes(outputCapacity, 16)
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...contributionJsCode.cellDeps.map((c) => c.cellDep),
-            ...claimJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.contributionScript().cellDeps.map((c) => c.cellDep),
+            ...shared.claimScript().cellDeps.map((c) => c.cellDep),
             {
                 outPoint: projectTx,
                 depType: "code"
@@ -206,9 +186,6 @@ export async function mergeDonation(
     if (infos.length == 1)
         throw Error("Can't merge one");
 
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const contributionJsCode = scripts.devnet["contribution.bc"];
-
     const projectCell = await getCellByTxHash(signer.client, porjectPoint);
     const projectScript = projectCell.cell?.cellOutput.type!;
     const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
@@ -219,12 +196,12 @@ export async function mergeDonation(
     contributionArgs.claimScript = projectArgs.claimScript;
 
     const contributionScript = {
-        codeHash: ckbJsVmScript.script.codeHash,
-        hashType: ckbJsVmScript.script.hashType,
+        codeHash: shared.ckbJsVmScript().codeHash,
+        hashType: shared.ckbJsVmScript().hashType,
         args: hexFrom(
             "0x0000" +
-            contributionJsCode.codeHash.slice(2) +
-            hexFrom(hashTypeToBytes(contributionJsCode.hashType)).slice(2) +
+            shared.contributionScript().codeHash.slice(2) +
+            hexFrom(hashTypeToBytes(shared.contributionScript().hashType)).slice(2) +
             hexFrom(contributionArgs.toBytes()).slice(2),
         ),
     };
@@ -253,8 +230,8 @@ export async function mergeDonation(
             "0x",
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...contributionJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.contributionScript().cellDeps.map((c) => c.cellDep),
             {
                 outPoint: porjectPoint,
                 depType: "code"
@@ -268,10 +245,6 @@ export async function mergeDonation(
 }
 
 export async function crowfundingSuccess(signer: ccc.SignerCkbPrivateKey, projectTx: OutPoint): Promise<Hex> {
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const projectJsCode = scripts.devnet["project.bc"];
-    const contributionJsCode = scripts.devnet["contribution.bc"];
-
     const projectCell = await getCellByTxHash(signer.client, projectTx);
     const projectScript = projectCell?.cell.cellOutput.type!;
     const projectArgs = shared.ProjectArgs.fromBytes(ccc.bytesFrom(projectScript.args!).slice(35));
@@ -282,12 +255,12 @@ export async function crowfundingSuccess(signer: ccc.SignerCkbPrivateKey, projec
     contributionArgs.claimScript = projectArgs.claimScript;
 
     const contributionScript = {
-        codeHash: ckbJsVmScript.script.codeHash,
-        hashType: ckbJsVmScript.script.hashType,
+        codeHash: shared.ckbJsVmScript().codeHash,
+        hashType: shared.ckbJsVmScript().hashType,
         args: hexFrom(
             "0x0000" +
-            contributionJsCode.codeHash.slice(2) +
-            hexFrom(hashTypeToBytes(contributionJsCode.hashType)).slice(2) +
+            shared.contributionScript().codeHash.slice(2) +
+            hexFrom(hashTypeToBytes(shared.contributionScript().hashType)).slice(2) +
             hexFrom(contributionArgs.toBytes()).slice(2),
         ),
     };
@@ -324,9 +297,9 @@ export async function crowfundingSuccess(signer: ccc.SignerCkbPrivateKey, projec
             },
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...projectJsCode.cellDeps.map((c) => c.cellDep),
-            ...contributionJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.projectScript().cellDeps.map((c) => c.cellDep),
+            ...shared.contributionScript().cellDeps.map((c) => c.cellDep),
         ],
     });
 
@@ -349,9 +322,6 @@ export async function getCellByTxHash(client: ccc.Client, tx: OutPoint): Promise
 export async function destroyProject(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
     const signerLock = (await signer.getRecommendedAddressObj()).script;
 
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const projectJsCode = scripts.devnet["project.bc"];
-
     const outpoint = await getProjectByTx(signer.client, txHash);
     const prjCell = await getCellByTxHash(signer.client, outpoint);
 
@@ -366,8 +336,8 @@ export async function destroyProject(signer: ccc.SignerCkbPrivateKey, txHash: He
             },
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...projectJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.projectScript().cellDeps.map((c) => c.cellDep),
         ],
     });
 
@@ -376,9 +346,6 @@ export async function destroyProject(signer: ccc.SignerCkbPrivateKey, txHash: He
 
 export async function destroyClaim(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
     const signerLock = (await signer.getRecommendedAddressObj()).script;
-
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const claimJsCode = scripts.devnet["claim.bc"];
 
     const outpoint = await getClaimByTx(signer.client, txHash);
     const claimCell = await getCellByTxHash(signer.client, outpoint);
@@ -394,8 +361,8 @@ export async function destroyClaim(signer: ccc.SignerCkbPrivateKey, txHash: Hex)
             },
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...claimJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.claimScript().cellDeps.map((c) => c.cellDep),
         ],
     });
 
@@ -404,11 +371,6 @@ export async function destroyClaim(signer: ccc.SignerCkbPrivateKey, txHash: Hex)
 
 export async function refound(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Promise<Hex> {
     const signerLock = (await signer.getRecommendedAddressObj()).script;
-
-    const ckbJsVmScript = systemScript.devnet["ckb_js_vm"];
-    const projectJsCode = scripts.devnet["project.bc"];
-    const contributionJsCode = scripts.devnet["contribution.bc"];
-    const claimJsCode = scripts.devnet["claim.bc"];
 
     const outpoint = await getClaimByTx(signer.client, txHash);
     const claimCell = await getCellByTxHash(signer.client, outpoint);
@@ -441,12 +403,12 @@ export async function refound(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Pro
     let contributionOutput: CellOutputLike[] = [];
     for (let i = 0; i < txInfo.transaction.outputs.length; i++) {
         const output = txInfo.transaction.outputs[i];
-        if (output.lock.codeHash != ckbJsVmScript.script.codeHash || output.lock.hashType != ckbJsVmScript.script.hashType)
+        if (output.lock.codeHash != shared.ckbJsVmScript().codeHash || output.lock.hashType != shared.ckbJsVmScript().hashType)
             continue;
 
         const jsScript = bytesFrom(output.lock.args).slice(2, 35);
-        if (hexFrom(jsScript) != shared.joinHex(hexFrom(contributionJsCode.codeHash),
-            hexFrom(hashTypeToBytes(contributionJsCode.hashType))))
+        if (hexFrom(jsScript) != shared.joinHex(hexFrom(shared.contributionScript().codeHash),
+            hexFrom(hashTypeToBytes(shared.contributionScript().hashType))))
             continue;
 
         let cell = await signer.client.getCellLive({ txHash: txHash, index: i });
@@ -467,16 +429,16 @@ export async function refound(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Pro
         args.deadline = claimArgs.deadline;
         args.claimScript =
             shared.joinHex(
-                hexFrom(scripts.devnet["claim.bc"].codeHash),
-                hexFrom(hashTypeToBytes(scripts.devnet["claim.bc"].hashType))
+                hexFrom(shared.claimScript().codeHash),
+                hexFrom(hashTypeToBytes(shared.claimScript().hashType))
             );
         const contributionScript = {
-            codeHash: systemScript.devnet["ckb_js_vm"].script.codeHash,
-            hashType: systemScript.devnet["ckb_js_vm"].script.hashType,
+            codeHash: shared.ckbJsVmScript().codeHash,
+            hashType: shared.ckbJsVmScript().hashType,
             args: shared.joinHex(
                 "0x0000",
-                hexFrom(scripts.devnet["contribution.bc"].codeHash),
-                hexFrom(hashTypeToBytes(scripts.devnet["contribution.bc"].hashType)),
+                hexFrom(shared.contributionScript().codeHash),
+                hexFrom(hashTypeToBytes(shared.contributionScript().hashType)),
                 hexFrom(args.toBytes()),
             ),
         };
@@ -514,9 +476,9 @@ export async function refound(signer: ccc.SignerCkbPrivateKey, txHash: Hex): Pro
             },
         ],
         cellDeps: [
-            ...ckbJsVmScript.script.cellDeps.map((c) => c.cellDep),
-            ...contributionJsCode.cellDeps.map((c) => c.cellDep),
-            ...claimJsCode.cellDeps.map((c) => c.cellDep),
+            ...shared.ckbJsVmScript().cellDeps.map((c) => c.cellDep),
+            ...shared.contributionScript().cellDeps.map((c) => c.cellDep),
+            ...shared.claimScript().cellDeps.map((c) => c.cellDep),
         ],
     });
 
