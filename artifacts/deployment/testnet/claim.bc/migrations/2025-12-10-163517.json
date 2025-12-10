@@ -2,7 +2,7 @@
   "cell_recipes": [
     {
       "name": "claim.bc",
-      "tx_hash": "0x66653aff0b7a5f2ce897374a222029fb5e350a81d4e5179b0d0cfe7a3907cbdf",
+      "tx_hash": "0xec75cd19b0bb38039b30b23047810437486759041477f0f65b796d1b8637a056",
       "index": 0,
       "occupied_capacity": 3935000000000,
       "data_hash": "0x66cce698ae0fbe90821a96dbf823b3ed9464488c289316df59988dc0ac738bb2"

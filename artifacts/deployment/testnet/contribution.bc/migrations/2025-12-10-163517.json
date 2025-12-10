@@ -2,7 +2,7 @@
   "cell_recipes": [
     {
       "name": "contribution.bc",
-      "tx_hash": "0x700fc8fe76bcb2b8a77ae8dd7ec3dab668e995a5c5b99d7affd13a93db46ec92",
+      "tx_hash": "0x9731ae1df645da1a12d575791e84eb15d1a93969cd9131aa153dee5a362723b3",
       "index": 0,
       "occupied_capacity": 3793100000000,
       "data_hash": "0x8371fddfa86bc4d87b9a3d86b997a03498343ac4fd6b42e3c4fa4c4b765a231b"

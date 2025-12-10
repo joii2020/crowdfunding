@@ -2,7 +2,7 @@
   "cell_recipes": [
     {
       "name": "project.bc",
-      "tx_hash": "0x3243ed7b4c98bd6857848fa22032d1a4a0baf2860416d788d265c9bb45e0d321",
+      "tx_hash": "0xb735195d147115fd97f40f168d6742104f756860b7d3a2edc872fab35656a1f6",
       "index": 0,
       "occupied_capacity": 3800100000000,
       "data_hash": "0xfb3fff95a1b214d1176f2a21f962d596243380fdb03359948f3cb4d61d41b6e1"

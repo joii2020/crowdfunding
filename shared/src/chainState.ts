@@ -58,8 +58,6 @@ export class ProjectCellInfo {
         let cells = getCellByJsType(client,
             hexFrom(shared.projectScript.codeHash),
             hashTypeFrom(shared.projectScript.hashType));
-
-        console.log(`1111`);
         let infos: ProjectCellInfo[] = [];
         for await (const cell of cells) {
             const info = await this.newByCell(client, cell, true);

@@ -3,9 +3,9 @@ name = "project.bc"
 enable_type_id = false
 
   [cells.location]
-  file = "/Volumes/workspack/code/ckb/crowdfunding/artifacts/dist/project.bc"
+  file = "/home/joii/code/crowdfunding/artifacts/dist/project.bc"
 
 [lock]
 code_hash = "0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8"
-args = "0x4118c8c16749bf126b22468d030bf9de7da3717b"
+args = "0x2e40bfe8da716d137b7e3a62885dad6f3f4f5216"
 hash_type = "type"
