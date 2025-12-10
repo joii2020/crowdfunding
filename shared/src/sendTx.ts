@@ -4,11 +4,14 @@ import * as shared from "./index"
 async function updateSince(signer: ccc.SignerCkbPrivateKey, tx: ccc.Transaction): Promise<ccc.Transaction> {
     // Update Since
     await tx.completeInputsByCapacity(signer);
-    let now = new Date(Date.now() - 120_000); // 2min
+    
+    let now = shared.newSince(-2)   // 2min
+    if (shared.getNetwork() != "devnet") {
+        now = shared.newSince(-10)  // 10min
+    }
 
-    let nowSince = shared.sinceFromDate(now);
     for (let i = 0; i < tx.inputs.length; i++) {
-        tx.inputs[i].since = nowSince.toNum();
+        tx.inputs[i].since = now.toNum();
     }
     return tx;
 }
