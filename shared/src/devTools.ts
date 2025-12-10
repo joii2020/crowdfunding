@@ -8,9 +8,8 @@ export async function createProject(
     if (deadline == undefined)
         deadline = new Date(Date.now() + 3 * 60 * 1000); // Default : 3min
 
-    const prjOutpoint = await shared.createCrowfunding(signer, 3000n, deadline, '测试一下-----');
+    const prjOutpoint = await shared.createCrowfunding(signer, 3000n, deadline, '');
     await signer.client.waitTransaction(prjOutpoint.txHash);
-    console.log(`Project Done: ${prjOutpoint.txHash}`);
 
     let donatoinTx: Hex[] = [];
     donatoinTx.push(await shared.donationToProject(signer, 1000n, prjOutpoint));
@@ -21,7 +20,6 @@ export async function createProject(
 
     for (const tx of donatoinTx) {
         await signer.client.waitTransaction(tx);
-        console.log(`Donatoin Done: ${tx}`);
     }
 
     return hexFrom(prjOutpoint.txHash);

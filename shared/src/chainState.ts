@@ -56,8 +56,8 @@ export class ProjectCellInfo {
 
     static async getAll(client: ccc.Client): Promise<ProjectCellInfo[]> {
         let cells = getCellByJsType(client,
-            hexFrom(shared.projectScript.codeHash),
-            hashTypeFrom(shared.projectScript.hashType));
+            hexFrom(shared.projectScript().codeHash),
+            hashTypeFrom(shared.projectScript().hashType));
         let infos: ProjectCellInfo[] = [];
         for await (const cell of cells) {
             const info = await this.newByCell(client, cell, true);
@@ -88,16 +88,16 @@ export class ContributionCellInfo {
         args.deadline = shared.sinceFromDate(projectInfo.deadline);
         args.claimScript =
             shared.joinHex(
-                hexFrom(shared.claimScript.codeHash),
-                hexFrom(hashTypeToBytes(shared.claimScript.hashType))
+                hexFrom(shared.claimScript().codeHash),
+                hexFrom(hashTypeToBytes(shared.claimScript().hashType))
             );
         const contributionScript = {
-            codeHash: shared.ckbJsVmScript.codeHash,
-            hashType: shared.ckbJsVmScript.hashType,
+            codeHash: shared.ckbJsVmScript().codeHash,
+            hashType: shared.ckbJsVmScript().hashType,
             args: shared.joinHex(
                 "0x0000",
-                hexFrom(shared.contributionScript.codeHash),
-                hexFrom(hashTypeToBytes(shared.contributionScript.hashType)),
+                hexFrom(shared.contributionScript().codeHash),
+                hexFrom(hashTypeToBytes(shared.contributionScript().hashType)),
                 hexFrom(args.toBytes()),
             ),
         };
@@ -129,8 +129,8 @@ export class ClaimCellInfo {
     ): Promise<ClaimCellInfo[]> {
         const lockScript = (await signer.getRecommendedAddressObj()).script;
         const claimCodeInfo = shared.joinHex(
-            hexFrom(shared.claimScript.codeHash),
-            hexFrom(hashTypeToBytes(shared.claimScript.hashType)));
+            hexFrom(shared.claimScript().codeHash),
+            hexFrom(hashTypeToBytes(shared.claimScript().hashType)));
 
         const infos: ClaimCellInfo[] = [];
 
@@ -139,12 +139,12 @@ export class ClaimCellInfo {
             let txs = signer.client.findTransactions(
                 {
                     script: {
-                        codeHash: shared.ckbJsVmScript.codeHash,
-                        hashType: shared.ckbJsVmScript.hashType,
+                        codeHash: shared.ckbJsVmScript().codeHash,
+                        hashType: shared.ckbJsVmScript().hashType,
                         args: shared.joinHex(
                             hexFrom("0x0000"),
-                            hexFrom(shared.claimScript.codeHash),
-                            hexFrom(hashTypeToBytes(shared.claimScript.hashType)),
+                            hexFrom(shared.claimScript().codeHash),
+                            hexFrom(hashTypeToBytes(shared.claimScript().hashType)),
                             new shared.ClaimArgs(
                                 projectCell?.cellOutput.type?.hash(),
                                 shared.sinceFromDate(projectInfo.deadline),
@@ -185,7 +185,7 @@ export class ClaimCellInfo {
                 const typeScript = cell.cellOutput.type;
                 if (typeScript == undefined)
                     continue;
-                if (typeScript.codeHash != shared.ckbJsVmScript.codeHash || typeScript.hashType != shared.ckbJsVmScript.hashType)
+                if (typeScript.codeHash != shared.ckbJsVmScript().codeHash || typeScript.hashType != shared.ckbJsVmScript().hashType)
                     continue;
                 if (typeScript.args.length < 35)
                     continue;

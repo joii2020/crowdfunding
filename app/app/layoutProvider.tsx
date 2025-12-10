@@ -20,7 +20,6 @@ export function LayoutProvider({ children }: { children: React.ReactNode }) {
       setClient(newClient);
     }
   }, []);
-  console.log(client, 'client')
   if (!client) {
     return <div>Loading...</div>;
   }

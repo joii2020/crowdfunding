@@ -19,7 +19,7 @@ export async function sendTx(
     tx = await updateSince(signer, tx);
 
     // Update Type ID
-    let prjCodeHash = shared.projectScript.codeHash;
+    let prjCodeHash = shared.projectScript().codeHash;
     for (let index = 0; index < tx.inputs.length; index++) {
         const output = tx.outputs[index];
         if (!output || !output.type)

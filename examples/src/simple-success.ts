@@ -43,6 +43,8 @@ async function main() {
     path: path.resolve(__dirname, "../../.env"),
   });
 
+  console.log(`Network : ${shared.getNetwork()}`);
+
   let client: ccc.Client;
   let signer: ccc.SignerCkbPrivateKey;
 
@@ -52,6 +54,7 @@ async function main() {
 
   const projectTx = await createProject(signer, 2000n);
   // const projectTxHash = "0x7f5703f4322eee237e90e9d100febf4dd9547bb0f13425108781728cf511bea8"
+  console.log(`Create project done, txHash(${projectTx.txHash})`);
 
   // donation
   let donations = []
@@ -59,14 +62,16 @@ async function main() {
   donations.push(await donation(signer, projectTx, 800n));
   donations.push(await donation(signer, projectTx, 700n));
 
+
   // wait all 
   for (const it of donations) {
     await signer.client.waitTransaction(it);
   }
+  console.log(`Donations done: \n${ccc.stringify(donations)}`);
 
   // merge
   let donationMerged = await mergeDonation(signer, projectTx);
-  console.log(`donation (merged) TxHash: ${donationMerged}`);
+  console.log(`Donation (merged) TxHash: ${donationMerged}`);
   const lastDonation = await donation(signer, projectTx, 300n);
   donations.push(lastDonation);
 

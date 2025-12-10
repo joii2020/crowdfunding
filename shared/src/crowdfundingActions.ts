@@ -79,8 +79,6 @@ export async function createCrowfunding(
     const contributionJsCode = scripts.devnet["contribution.bc"];
     const claimJsCode = scripts.devnet["claim.bc"];
 
-    console.log(`-- js-vm code hash: ${hexFrom(ckbJsVmScript.script.codeHash)}`);
-
     let prjArgs = new shared.ProjectArgs();
     prjArgs.creatorLockScriptHash = signerLock.hash();
     prjArgs.goalAmount = shared.CKBToShannon(goal);

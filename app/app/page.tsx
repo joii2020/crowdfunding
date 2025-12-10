@@ -105,7 +105,6 @@ export default function Home() {
     window.devCreateTestProject = async () => {
       const signer = walletSigner as unknown as ccc.SignerCkbPrivateKey;
       shared.dev_tool.createProject(signer);
-      console.log('CreateTestProject done');
     };
 
     return () => {
@@ -252,8 +251,7 @@ export default function Home() {
             </p>
             {!walletSigner && (
               <p className="mt-1 text-xs text-amber-700">
-                Wallet not connected; using a random signer for public project data. Will refresh
-                after you connect.
+                Wallet not connected.
               </p>
             )}
           </div>
@@ -265,15 +263,15 @@ export default function Home() {
         <section className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-3">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Project Script</p>
-            <p className="break-all font-mono text-xs">{shared.projectScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.projectScript().codeHash}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Contribution Script</p>
-            <p className="break-all font-mono text-xs">{shared.contributionScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.contributionScript().codeHash}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Claim Script</p>
-            <p className="break-all font-mono text-xs">{shared.claimScript?.codeHash}</p>
+            <p className="break-all font-mono text-xs">{shared.claimScript().codeHash}</p>
           </div>
         </section>
 
