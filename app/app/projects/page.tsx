@@ -1,13 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc, hexFrom, Hex, OutPoint } from '@ckb-ccc/core';
-import ConnectWallet from '@/components/ConnectWallet';
 import { buildClient } from '@/utils/client';
 import * as shared from 'shared';
+import Header from '../component/Header';
+import FundingProgress from '../component/FundingProgress';
 
 type ProjectDetailCacheEntry = {
   data: shared.ProjectCellInfo | null;
@@ -386,39 +386,8 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto max-w-5xl px-6 py-10 space-y-10">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="rounded-full border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50"
-            >
-              ← Back
-            </Link>
-            <div>
-              <p className="text-sm text-muted-foreground">Project Detail</p>
-              <h1 className="text-3xl font-bold">Project</h1>
-              <p className="text-xs text-muted-foreground mt-1">
-                Network: <span className="font-mono">{network}</span>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                TxHash:{' '}
-                <span className="font-mono break-all">{txHash ?? 'Add txHash in the URL'}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                TxIndex: <span className="font-mono">{txIndexParam ?? 'Add txIndex in the URL'}</span>
-              </p>
-              {!walletSigner && (
-                <p className="mt-1 text-xs text-amber-700">
-                  Wallet not connected.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <ConnectWallet />
-          </div>
-        </header>
+      <div className="mx-auto max-w-6xl px-6 py-10 space-y-10">
+        <Header network={network} walletSigner={walletSigner} />
 
         {loadError && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">
@@ -430,28 +399,18 @@ export default function ProjectsPage() {
           <div className="flex items-center gap-3">
             <StatusBadge text={statusText} />
           </div>
-          <div className="text-lg font-semibold">
-            Raised / Goal:{' '}
-            <span className="font-mono">
-              {project ? shared.shannonToCKB(project.raised).toLocaleString() : loadingProject ? 'Loading...' : '—'}
-            </span>{' '}
-            /{' '}
-            <span className="font-mono">
-              {project ? shared.shannonToCKB(project.goal).toLocaleString() : loadingProject ? 'Loading...' : '—'}
-            </span>{' '}
-            CKB
-          </div>
+          {project && (
+            <FundingProgress
+              raised={shared.shannonToCKB(project.raised).toString()}
+              goal={shared.shannonToCKB(project.goal).toString()}
+            />
+          )}
           <p className="text-sm text-slate-700">
             Deadline:{' '}
             <span className="font-mono">
               {project ? formatDeadline(project.deadline) : loadingProject ? 'Loading...' : '—'}
             </span>
           </p>
-          <div className="text-xs text-muted-foreground">
-            {txHash && txIndexParam
-              ? `Loaded via txHash=${txHash}, txIndex=${txIndexParam}`
-              : 'Add ?txHash=...&txIndex=... to load project data.'}
-          </div>
           <p className="text-sm text-slate-700">
             Project Creator:{' '}
             {project ? (
@@ -484,11 +443,11 @@ export default function ProjectsPage() {
                 {finishingProject ? 'Finishing...' : 'Finish'}
               </button>
             )}
-            {project?.status !== 'Destroyed' && (
+            {project?.status !== 'Destroyed' && isOwner && (
               <button
                 onClick={handleDestroyProject}
                 className="rounded-lg bg-rose-600 text-white px-4 py-2 text-sm hover:bg-rose-500 disabled:opacity-60"
-                disabled={!project || project.status !== 'Expired' || !isOwner || loadingProject || destroyingProject}
+                disabled={!project || project.status !== 'Expired' || loadingProject || destroyingProject}
               >
                 {destroyingProject ? 'Destroying...' : 'Destroy'}
               </button>

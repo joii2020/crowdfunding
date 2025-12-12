@@ -3,3 +3,8 @@ packages:
   - examples
   - shared
   - artifacts
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - unrs-resolver

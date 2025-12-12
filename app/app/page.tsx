@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useCcc, useSigner } from '@ckb-ccc/connector-react';
 import { ccc } from '@ckb-ccc/core';
-import ConnectWallet from '@/components/ConnectWallet';
 import { buildClient } from '@/utils/client';
 import * as shared from 'shared';
+import Header from './component/Header';
 
 function StatusBadge({ text }: { text: string }) {
   const base =
@@ -242,38 +242,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto max-w-6xl px-6 py-10 space-y-10">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">CKB Crowdfunding</p>
-            <h1 className="text-3xl font-bold">Projects</h1>
-            <p className="text-xs text-muted-foreground mt-1">
-              Network: <span className="font-mono">{network}</span>
-            </p>
-            {!walletSigner && (
-              <p className="mt-1 text-xs text-amber-700">
-                Wallet not connected.
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <ConnectWallet />
-          </div>
-        </header>
-
-        <section className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-3">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Project Script</p>
-            <p className="break-all font-mono text-xs">{shared.projectScript().codeHash}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Contribution Script</p>
-            <p className="break-all font-mono text-xs">{shared.contributionScript().codeHash}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Claim Script</p>
-            <p className="break-all font-mono text-xs">{shared.claimScript().codeHash}</p>
-          </div>
-        </section>
+        <Header network={network} walletSigner={walletSigner} />
 
         <section className="flex items-center justify-between flex-wrap gap-3">
           <div>
