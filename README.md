@@ -4,7 +4,8 @@ End-to-end crowdfunding dapp for CKB. It ships three on-chain scripts (Project, 
 
 ## Overview
 
-Contracts are written in TypeScript for the CKB JavaScript VM (ckb-js-vm) and compiled to bytecode with esbuild. The protocol flow:
+Contracts are written in `TypeScript` and compiled for use with the CKB JavaScript VM (ckb-js-vm).
+The protocol flow:
 
 - Project (type script): stores creator lock hash, goal amount, deadline, and script hashes for Contribution/Claim.
 - Contribution (lock script): holds each backer’s funds; multiple cells can be merged before settlement.
