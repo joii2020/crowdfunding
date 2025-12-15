@@ -463,8 +463,8 @@ export default function ProjectsPage() {
                 <>
                   <button
                     onClick={handleOpenDonate}
-                    disabled={!walletSigner}
-                    className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner
+                    disabled={!walletSigner || project?.status === 'Expired'}
+                    className={`rounded-md px-4 py-2 text-sm text-white ${walletSigner && project?.status !== 'Expired'
                       ? 'bg-slate-900 hover:bg-slate-800'
                       : 'bg-slate-400 cursor-not-allowed'
                       }`}
